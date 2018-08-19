@@ -1,6 +1,6 @@
 /**
  * forever套件用相關共用功能
- * @module controllers/CommonMethod.js
+ * @module controllers/CommonMethod
  */
 
 "use strict";
@@ -11,7 +11,7 @@
  */
 module.exports.killForeverPid = function(keyword) {
 	
-	const debug = require("debug")("CustodianCustWeb:CommonMethod.killForeverPid");
+	const debug = require("debug")("CustodianApi:CommonMethod.killForeverPid");
 	const forever = require("forever");
 
 	forever.list("", function(err, results) {
@@ -34,7 +34,7 @@ module.exports.killForeverPid = function(keyword) {
 module.exports.foreverCheck = function() {
 
 	const forever = require("forever");
-	const debug = require("debug")("CustodianCustWeb:CommonMethod.foreverCheck");
+	const debug = require("debug")("CustodianApi:CommonMethod.foreverCheck");
 	const config = require("../Config");
 	const monitorConfig = require("../MonitorConfig");
 	const axios = require("axios");
@@ -61,9 +61,9 @@ module.exports.foreverCheck = function() {
 		else {
 			results.forEach(element => {
 				debug(element.id);
-				if(element.id === "CustodianCustWeb"){
+				if(element.id === "CustodianApi"){
 					debug(element.restarts);
-					let restart_content = "Forever restart CustodianCustWeb script for " + element.restarts + " time. ";
+					let restart_content = "Forever restart CustodianApi script for " + element.restarts + " time. ";
 					if (element.restarts > 0) {
 						axiosRequest.post(server_path + mail_api_path, {
 							receivers: monitorConfig[process.env.NODE_ENV].developers.mail,
@@ -76,7 +76,7 @@ module.exports.foreverCheck = function() {
 							.catch(function(error) {
 								// debug(error);
 							});
-						debug("Forever restart CustodianCustWeb script for " + element.restarts + " time");
+						debug("Forever restart CustodianApi script for " + element.restarts + " time");
 					}
 				}
 			});

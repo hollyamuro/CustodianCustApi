@@ -14,9 +14,6 @@
         },
         "sourceType": "module"
     },
-    "plugins": [
-        "react"
-    ],
     "rules": {
         "indent": [
             "warn",
@@ -40,9 +37,8 @@
         "no-console": [
             "error", {"allow": ["warn", "error"] }
         ],
-        "no-var": "error",
-        "react/jsx-uses-react": 1,
-        "react/jsx-uses-vars": 1,
-        "react/jsx-no-undef": 1
+        "no-mixed-spaces-and-tabs": ["error", "smart-tabs"],
+        "no-irregular-whitespace": ["error", { "skipComments": true }],
+        "no-var": "error"
     }
 }

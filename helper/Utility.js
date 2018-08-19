@@ -1,277 +1,159 @@
 /**
- * 共用程式 & middleware
- * @module helper/Utility.js
+ * 共用程式
+ * @module helper/Utility
  */
 
 "use strict";
 
-/**
- * 設定session參數
- * @param  {Object} session session物件
- */
-module.exports.sessionConfigureHandler = (session)=>{
 
-	const uuidV1 = require("uuid/v1");
-	const config = require("../Config");
-    
-	let sessionProps = {
-		secret: uuidV1() + uuidV1(),  //recommand 128 bytes random string
-		resave: false,
-		saveUninitialized: false,
-		cookie: { maxAge: 4 * 60 * 60 * 1000 }    // 4 hours
+/**
+ * 指定日期格式，將Js Date轉成DB用的String
+ *EX： 
+ *(new Date()).Format("yyyy-MM-dd hh:mm:ss",0,0,0,0,0) ==> 2018-07-02 08:09:04
+ *(new Date()).Format("yyyy-M-d",0,0,1,0,0)      ==> 2018-7-3
+ *(new Date()).Format("yyyy-MM-dd hh:mm:ss",1,2,3,4,5)      ==> 2019-09-05 12:09:04
+ * @param  {} format 日期格式，子串。
+ * @param  {} addmonth 數值 增加幾月
+ * @param  {} addday 數值 增加幾日
+ * @param  {} addhour 數值 增加幾小時
+ * @param  {} addminute 數值 增加幾分鐘
+ */
+module.exports.setDate=function(Date,format,addmonth,addday,addhour,addminute)
+{
+	let o = {
+		"M+": Date.getMonth()+1+addmonth, //月份0開始
+		"d+": Date.getDate()+addday, //日 
+		"h+": Date.getHours()+addhour, //時
+		"m+": Date.getMinutes()+addminute, //分 
+		"s+": Date.getSeconds(), //秒 
+		"q+": Math.floor((Date.getMonth() + 3) / 3), //季度 
+		"S": Date.getMilliseconds() //毫秒 
 	};
-	const redis = require("connect-redis")(session);
-	const mongodb = require("connect-mongo")(session);
-	switch(config[process.env.NODE_ENV].default_session_database.toString().trim()){
-	case "redis":
-		sessionProps.store = new redis(config[process.env.NODE_ENV].redis);
-		break;
-	case "mongodb":
-		sessionProps.store = new mongodb(config[process.env.NODE_ENV].mongodb);
-		break;
-	default:
-		//throw error here
-		process.exit(1);
-		break;
-	}
-
-	return sessionProps;
+	if (/(y+)/.test(format)) format = format.replace(RegExp.$1, (Date.getFullYear() + "").substr(4 - RegExp.$1.length));
+	for (let k in o)
+		if (new RegExp("(" + k + ")").test(format)) format = format.replace(RegExp.$1, (RegExp.$1.length == 1) ? (o[k]) : (("00" + o[k]).substr(("" + o[k]).length)));
+	return format;
 };
 
 /**
- * 取得系統資訊 [TODO]
- * @param  {Object} req
- * @param  {Object} res
- * @param  {Object} next
+ * 產生隨機數字
+ * @param  {} max 最大隨機值 int
  */
-module.exports.systemInfoHandler = (req, res, next) => {
-	const debug = require("debug")("CustodianCustWeb:Utility.systemInfoHandler");
-	const systemInformation = require("./SystemInformation");
-
-	let startDate = "";
-	let sysHash = "";
-	let sysDate = "";
-	let remoteSysHash = "";
-	let remoteSysDate = "";
-	debug(startDate);
-	debug(sysHash);
-	debug(sysDate);
-	debug(remoteSysHash);
-	debug(remoteSysDate);
-
-	Promise.all([
-		systemInformation.getSystemStartVersion(),
-		systemInformation.getSystemGitVersion(), 
-		systemInformation.getRemoteSystemGitVersion()
-	])
-		.then(function(values) {
-
-			startDate = values[0].system_version_date;
-			sysHash = values[1].system_version_hash.substring(0, 8);
-			sysDate = values[1].system_version_date;
-			remoteSysHash = values[2].system_version_hash.substring(0, 8);
-			remoteSysDate = values[2].system_version_date;	
-			next();
-        
-		})
-		.catch((err) => { 
-			debug(err.stack);
-			startDate = "";
-			sysHash = "";
-			sysDate = "";
-			remoteSysHash = "";
-			remoteSysDate = "";
-			next();
-		});
-	// .finally(()=>{
-	//     switch(process.env.NODE_ENV){
-	//         case "production":
-	//             res.locals.version = "目前版本: 正式版" + ( startDate === "" ) ? "" : ("(" + startDate + "啟用)");
-	//             if ( sysDate !== "" ){ res.locals.system_info = "[網站版本]:" + sysDate ; }
-	//             if ( remoteSysDate !== "" ){ res.locals.system_info_remote = "[伺服器版本]:" + remoteSysDate ; }
-	//             break;
-	//         case "development":
-	//             res.locals.version = "目前版本: 測試版" + ( startDate === "") ? "" : ("(" + startDate + "啟用)");
-	//             if ( sysDate !== "" || sysHash !== "" ){ res.locals.system_info = "[網站版本]:" + sysDate + "(" + sysHash + ")"; }
-	//             if ( remoteSysDate !== "" || remoteSysHash !=="" ){ res.locals.system_info_remote = "[伺服器版本]:" + remoteSysDate + "(" + remoteSysHash + ")"; }
-	//             break;
-        
-	//         default:
-	//             res.locals.version = "目前版本: 版本錯誤，請聯絡資訊處";
-	//             res.locals.system_info = "";
-	//             res.locals.system_info_remote = "";
-	//             break;
-	//         }
-	//     next();
-	// });
+module.exports.randomNumber=function(max)
+{
+	return Math.floor(Math.random() * Math.floor(max));
 };
 
-/**
- * 顯示彈跳視窗， 因為是使用locals設定請配合EJS template使用。
- * @param  {String} alterType
- * @param  {String} alterMsg
- * @see ...
- */
-module.exports.showAlterEJSHandler = (req, res, alterMsg) => {
-	res.locals.show_popup = true;
-	res.locals.popup = { type: alterMsg.type, message: alterMsg.message, };
-};
+
 
 /**
- * 送出http/https請求
- * @param  {Object} target 請求設定
- * target:{
-        policy: https / http,
-        host:   host,
-        port:   port,
-        path:   url path,
-        method: GET/POST/PUSH/DELETE
-    }, 
- * @param  {Object} data 資料
- * @param  {String} requester 送出請求人員
- * @param  {Function} dataHandler 處理回送資料callback
- * @param  {Function} errorHandler 處理回送錯誤callback
+ * 產生Account log物件
+ * @param  {type} type I = Insert / D = delete / U = update1
+ * @param  {User} 建立資料者(員編、客戶、IP等等)
+ * @param  {strtoday} log時間字串
+ * @param  {Cust_Account} 客戶帳號物件(請參照資料庫規格 Cust_Account) 
  */
-module.exports.sendRequestHandler = function( target, data, requester, dataHandler, errorHandler){
-	
+module.exports.createAccountLog=function(type,user,strtoday,Cust_Account)
+{
+	// const CustAccountRepository = require("../repositories/CustAccountRepository");
+	const utility = require("./Utility");
+	const debug = require("debug")("CustodianApi:Utility.createAccountLog");
+	// let create_log_result;
+	let Cust_Account_Log = {    
+		"action_type":type,
+	    "action_date":strtoday,
+		"action_user":user,
+		"account":Cust_Account.account,
+		"sino_account":Cust_Account.sino_account,
+		"password":Cust_Account.password,
+		"passwordsalt":Cust_Account.passwordsalt,
+		"accountsalt":Cust_Account.accountsalt,
+		"accounthash":Cust_Account.accounthash,
+		"name":Cust_Account.name,
+		"phone":Cust_Account.phone,
+		"status":Cust_Account.status,
+		"url":Cust_Account.url,
+		"reset_url":Cust_Account.reset_url,
+		"count":Cust_Account.count,
+		"mail_count":Cust_Account.mail_count,
+		"verify_code":Cust_Account.verify_code,
+		"url_expire":utility.getSqlDateByString(Cust_Account.url_expire),
+		"reset_url_expire":Cust_Account.reset_url_expire,
+		"expire_date":Cust_Account.expire_date,
+		"create_date":Cust_Account.create_date,
+		"edit_date":strtoday,
+	};
+	debug(Cust_Account_Log);
+	return Cust_Account_Log;
+};
+
+
+/**
+ * 將資料庫讀取出來的js日期字串，轉換成可直接存入SQL資料庫的日期字串。
+ * @param  {} Java Script的日期字串
+ * return 標準的SQL日期字串(yyyy/MM/dd hh:mm:ss)
+ */
+module.exports.getSqlDateByString=function(inputDate)
+{
+	let dateFormat = require("date-format");
 	try{
-        
-		const policy = (target.policy === "http")? require("http"): require("https");
-		const postData = JSON.stringify({ "data": data, "requester":  requester });
-		const httpOption = {
-			"connect":  {   
-				host: target.host,
-				port: target.port,
-				path: target.path,
-				method: target.method,
-				headers: {
-					"Content-Type": "application/json",
-					"Content-Length": Buffer.byteLength(postData),
-				},
-			},
-			"data": postData,
-		};
-        
-		const httpReq = policy.request(httpOption.connect, function(response){
-			let data = "";
-			response.on("data", (chunk) => { data += chunk; });
-			response.on("end", () => { dataHandler(data); });
-		}).on("error", (e) => { errorHandler(e); });
-
-		httpReq.write(postData);
-		httpReq.end();
-
-	}catch(e){
-		errorHandler(e);
-	}
-};
-
-/**
- * 取得權限列表
- * @param  {Object} premissionList
- */
-module.exports.getNavbarPermission = (permissionList) => {
-	
-	const systemHierarchy = require("./SystemHierarchy");
-	// return systemHierarchy;
-
-	let structPermission = {};
-	for(let i=0; i<permissionList.length; i++){
-		
-		let sys = permissionList[i].System_Id;
-		let dir = permissionList[i].Directory_Id;
-		let fun = permissionList[i].Function_Id;
-		let auth = permissionList[i].Auth;
-
-		if(	!systemHierarchy.hasOwnProperty(sys) ||
-			!systemHierarchy[sys].hasOwnProperty(dir) ||
-			!systemHierarchy[sys][dir].hasOwnProperty(fun))
-			continue;
-			
-		if(!structPermission.hasOwnProperty(sys)){
-			structPermission[sys] = {
-				name: systemHierarchy[sys].name,
-			};
+		if(typeof(inputDate)!=undefined)
+		{
+			let datetime=new Date(inputDate);
+			let strdatetime =dateFormat.asString("yyyy/MM/dd hh:mm:ss", datetime);
+			return strdatetime;
 		}
-
-		if(!structPermission[sys].hasOwnProperty(dir)){
-			structPermission[sys][dir] = {
-				name: systemHierarchy[sys][dir].name,
-			};
-		}
-
-		if(!structPermission[sys][dir].hasOwnProperty(fun)){
-			structPermission[sys][dir][fun] = {
-				name: systemHierarchy[sys][dir][fun].name,
-				url: systemHierarchy[sys][dir][fun].url,
-				auth: auth,
-			};
+		else
+		{
+			return "1900/01/01 01:01:01";
 		}
 	}
-
-	return structPermission;
-};
-
-/**
- * 透過外部三方，認證取得確切client端IP
- * @return IP/NA
- */
-module.exports.getUserIP = () => 
-{
-	try
+	catch(err)
 	{
-		const debug = require("debug")("CustodianCustWeb:Utility.getUserIP");
-		const os =  require("os");
-		const ifaces = os.networkInterfaces();
-		
-		return new Promise( (resolve, reject ) => {
-			Object.keys(ifaces).forEach(function (ifname) {
-				let alias = 0;
-				ifaces[ifname].forEach(function (iface) {
-					if ("IPv4" !== iface.family || iface.internal !== false) {
-					// skip over internal (i.e. 127.0.0.1) and non-ipv4 addresses
-						return;
-					}
-					if (alias >= 1) {
-					// this single interface has multiple ipv4 addresses
-					} else {
-					// this interface has only one ipv4 adress
-						debug(iface.address);
-						resolve(iface.address);
-					}
-					++alias;
-				});
-			});
-		});
-	}
-	catch(err){
-		throw(err);
+		return "1900/01/01 01:01:01";
 	}
 };
 
-/**
- * 檢查輸入資料
- * @param  {Object} inputdata
- */
-module.exports.checkInputData = async(inputdata) => 
-{
-	const debug = require("debug")("CustodianCustWeb:Utility.checkInputData");
 
-	try
-	{
-		const InputDataRegexp = /['"/*\\]/;
-		return new Promise( (resolve, reject ) => {
-			Object.keys(inputdata).forEach(element => {
-				debug(inputdata[element]);
-				debug(inputdata[element].search(InputDataRegexp));
-				if(inputdata[element].search(InputDataRegexp)>=0){
-					resolve(false);
-				} 
-			});
-			resolve(true);
-		});
-	}
-	catch(err){
-		throw(err);
-	}
+/**
+ * Encryption Standard
+ * @param {inputString} 輸入字串
+ * @param {encryption} 加密後的字串
+ */
+module.exports.encryption=function(inputString)
+{
+	let aesjs = require("aes-js");
+	let key_256 = [2, 0, 1, 8, 0, 0, 0, 7, 0, 0, 1, 7, 0, 0, 17, 0,
+		0, 48, 0, 0, 2, 0, 1, 8, 0, 0, 0, 8, 0,
+		0, 1, 5];
+
+	let textBytes = aesjs.utils.utf8.toBytes(inputString);
+
+	// Counter 5 times
+	let aesCtr = new aesjs.ModeOfOperation.ctr(key_256, new aesjs.Counter(5));
+	let encryptedBytes = aesCtr.encrypt(textBytes);
+	let encryptedHex = aesjs.utils.hex.fromBytes(encryptedBytes);
+	return encryptedHex;
+
+};
+
+/**
+ * Encryption Standard
+ * @param {inputString} 輸入字串
+ * @param {encryption} 解密後的字串
+ */
+module.exports.decryption=function(inputString)
+{
+	let aesjs = require("aes-js");
+	let key_256 = [2, 0, 1, 8, 0, 0, 0, 7, 0, 0, 1, 7, 0, 0, 17, 0,
+		0, 48, 0, 0, 2, 0, 1, 8, 0, 0, 0, 8, 0,
+		0, 1, 5];
+	let encryptedBytes = aesjs.utils.hex.toBytes(inputString);
+
+	// Counter 5 times
+	let aesCtr = new aesjs.ModeOfOperation.ctr(key_256, new aesjs.Counter(5));
+	let decryptedBytes = aesCtr.decrypt(encryptedBytes);
+	// change to string
+	let decryptedText = aesjs.utils.utf8.fromBytes(decryptedBytes);
+	return decryptedText;
 };

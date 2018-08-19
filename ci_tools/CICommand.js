@@ -1,6 +1,6 @@
 /**
  * forever對外接口(npm用)
- * @module controllers/CommonMethod.js
+ * @module controllers/CommonMethod
  */
 
 "use strict";
@@ -11,7 +11,7 @@
  */
 const runCI = (args) => {
 
-	const debug = require("debug")("CustodianCustWeb:CICommand.runCI");
+	const debug = require("debug")("CustodianApi:CICommand.runCI");
 	const ciMethod = require("./CommonMethod");
 
 	if (args[0]) {

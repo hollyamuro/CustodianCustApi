@@ -1,7 +1,7 @@
 
 /**
  * 系統設定-監控用
- * @module MonitorConfig.js
+ * @module MonitorConfig
  */
 
 "use strict";

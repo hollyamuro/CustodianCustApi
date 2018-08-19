@@ -1,75 +1,121 @@
 /**
  * 系統設定檔
- * @module Config.js
+ * @module Config
  */
 
 "use strict";
 
 module.exports = {
-	production:{
-		/* 系統名稱 */
-		title: "Custodian Web",
-		/* Communication policy http/https */
-		policy: "https",
-		/* Port */
-		port: 8084,  
 
-		/*backend*/
-		backend: {
-		},
-		/*IntegratedProxyService*/
-		IntegratedProxyService_api: {
-		},
-		/*Session database */
-		default_session_database : "redis", // redis or mongodb or "" for native
-		redis : {
-			//dir = C:\Program Files\Redis
-			host:"localhost",
-			port:6379,
-			expires: 60 * 60 * 1000
-		},
-		mongodb : {
-			//dir = C:\Program Files\MongoDB\Server\3.4\bin
-			url:"mongodb://localhost:27017/session",
-			expires: 60 * 60 * 1000
-		},
-	},
-	development: {
-		/* 系統名稱 */
-		title: "Custodian Web(development version)",
+	production:{
 		/* Communication policy http/https */
 		policy: "https",
 		/* Port */
 		port: 8084,
-		
-		/*backend*/
-		backend: {
-			//host: "128.110.5.43",
-			host: "localhost",    //for local dev
-			port: "3001",
-			/*backend: (Backend request) Communication policy http/https*/
-			policy: "https",
+		/* Database setting */
+		database_config: {
+			CustodianWeb:{
+
+			},
+			BondGol:{
+
+			},
 		},
-		/*IntegratedProxyService*/
+		IntegratedProxyService_api: {
+			// host: 
+			// port: 
+			// policy: 
+		},
+		JwtService_api: {
+			// host: 
+			// port: 
+			// policy: 
+		},
+		CustodianBackend:{
+			// host: 
+			// port: 
+			// policy: 
+		},
+		CustodianCustWeb:{
+			// host: 
+			// port: 
+			// policy: 
+		},
+		MailServer:{
+			// host: 
+			// port: 
+			// policy: 
+		}
+	},
+	development: {
+		/* Communication policy http/https */
+		policy: "https",
+		/* Port */
+		port: 3001,
+		/* Database setting */
+		database_config: {	
+			CustodianWeb: {
+				database: "CustodianWeb",  
+				username: "apowner",
+				password: "ok1234",
+				options: {
+					host: "128.110.5.43",
+					dialect: "mssql",
+					pool: { max: 5, min: 0, idle: 10000 },
+					operatorsAliases: false
+				}
+			},	
+			BondGol:{
+				database: "bond_gol_uat",  
+				username: "apowner",
+				password: "ok1234",
+				options: {
+					host: "128.110.5.43",
+					dialect: "mssql",
+					pool: { max: 5, min: 0, idle: 10000 },
+					operatorsAliases: false
+				}
+			},
+		},
 		IntegratedProxyService_api: {
 			host: "128.110.5.43",
-			// host: 'localhost',    //for local dev
 			port: "8008",
-			/*backend: (Backend request) Communication policy http/https*/
 			policy: "https",
 		},
-		/*Session database */
-		default_session_database : "redis", // redis or mongodb or "" for native
-		redis : {
-			//dir = C:\Program Files\Redis
-			host:"localhost",
-			port:6379,
-			expires: 60 * 60 * 1000
+		JwtService_api: {
+			host: "128.110.5.43",
+			// host: "localhost",    //for local dev
+			port: "8086",
+			policy: "https",
 		},
-		mongodb : {
-			//dir = C:\Program Files\MongoDB\Server\3.4\bin
-			url:"mongodb://localhost:27017/session",
-			expires: 60 * 60 * 1000
+		CustodianBackend:{
+			host: "128.110.5.45",
+			port: "80",
+			policy: "http",
 		},
+		CustodianCustWeb:{
+			host: "128.110.5.9",
+			//host: "localhost",    //for local dev
+			port: "8084",
+			policy: "https",
+		},
+		Cust_MailServer:{
+			//對外mail server
+			//host: "128.110.24.66",
+			host: "128.110.5.43",
+			//port: "8081",
+			port: "8008",
+			policy: "https",
+			api:"api/mail_controller/send",
+		},
+		local_MailServer:{
+			//對內mail server
+			//host: "128.110.24.66",
+			host: "128.110.5.43",
+			//port: "8081",
+			port: "8008",
+			policy: "https",
+			api:"api/mail_controller/send",
+		}
 	},
 };
