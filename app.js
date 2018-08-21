@@ -46,7 +46,7 @@ const packageHandler = () => {
 	/* setting api routers */
 	require("./routes/ServiceRoute")(app);
 	require("./routes/CustRoute")(app);
-	require("./routes/StaffRoute.")(app);
+	require("./routes/StaffRoute")(app);
 
 	// catch 404 and forward to error handler
 	app.use((req, res, next) => {

@@ -57,7 +57,7 @@ module.exports = (app) => {
 	app.route("/api/staff/cust_group_users/create").post(custGroupUserService.insertCustGroupUser);
 	app.route("/api/staff/cust_group_users/delete").post(custGroupUserService.deleteCustGroupUser);
 
-	const custGroupPermissionService = require("../services/custGroupPermissionService");
+	const custGroupPermissionService = require("../services/CustGroupPermissionService");
 	app.route("/api/staff/cust_group_permissions/read").post(custGroupPermissionService.getAllCustGroupPermissions);
 	app.route("/api/staff/cust_group_permissions/create").post(custGroupPermissionService.insertCustGroupPermissions);
 	app.route("/api/staff/cust_group_permissions/delete").post(custGroupPermissionService.deleteCustGroupPermission);   
