@@ -1,6 +1,8 @@
 /**
  * 員工用路由
  * @module routes/StaffRoute
+ * 
+ * log: 2018/07/06 009727 增加功能項F05 後端發送邀請函
  */
 
 "use strict";
