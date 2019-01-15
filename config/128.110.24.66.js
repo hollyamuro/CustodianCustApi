@@ -7,12 +7,10 @@
 
 module.exports = {
 
-	production: {},
-	development: {},
-	debug: {
-		version: "0.0.0",
-		policy: "http",
-		nginx_port: 3001,
+	production: {
+		version: "1.0.0",
+		policy: "https",
+		nginx_port: 3051,
 		port: 3001,
 
 		/* Database setting */
@@ -20,20 +18,20 @@ module.exports = {
 			CustodianWeb: {
 				database: "CustodianWeb",
 				username: "apowner",
-				password: "ok1234",
+				password: "runsys",
 				options: {
-					host: "128.110.5.43",
+					host: "128.110.24.30",
 					dialect: "mssql",
 					pool: { max: 5, min: 0, idle: 10000 },
 					operatorsAliases: false
 				}
 			},
 			BondGol: {
-				database: "bond_gol_uat",
+				database: "bond_gol",
 				username: "apowner",
-				password: "ok1234",
+				password: "runsys",
 				options: {
-					host: "128.110.5.43",
+					host: "128.110.24.30",
 					dialect: "mssql",
 					pool: { max: 5, min: 0, idle: 10000 },
 					operatorsAliases: false
@@ -41,39 +39,44 @@ module.exports = {
 			},
 		},
 		IntegratedProxyService_api: {
-			host: "localhost",
-			port: "8008",
-			policy: "http",
+			host: "128.110.24.66",
+			port: "8018",
+			policy: "https",
 		},
 		JwtService_api: {
-			host: "localhost",
-			port: "8086",
-			policy: "http",
+			host: "128.110.24.66",
+			port: "8016",
+			policy: "https",
 		},
 		CustodianBackend: {
 			//固收主機
-			host: "128.110.5.45",
+			host: "128.110.13.18",
 			port: "80",
 			policy: "http",
 		},
 		CustodianCustWeb: {
-			host: "localhost",    //for local dev
-			port: "8084",
-			policy: "http",
+			domain:"custodian.sinotrade.com.tw",
+			host: "172.17.2.25",
+			port: "8086",
+			policy: "https",
 		},
 		Cust_MailServer: {
 			//對外mail server
-			host: "localhost",
-			port: "8008",
-			policy: "http",
-			api: "api/mail_controller/send/",
+			from:"SinoPac Securities Custody Service <custodian_service@sinopac.com>",
+			host: "128.110.24.66",
+			port: "8018",
+			policy: "https",
+			api: "api/mail_controller/external_send",
 		},
 		local_MailServer: {
 			//對內mail server
-			host: "localhost",
-			port: "8008",
-			policy: "http",
+			from:"SinoPac Securities Custody Service <custodian_service@sinopac.com>",
+			host: "128.110.24.66",
+			port: "8018",
+			policy: "https",
 			api: "api/mail_controller/send",
 		}
 	},
+	development: {},
+	debug: {},
 };

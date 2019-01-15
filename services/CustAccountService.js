@@ -7,8 +7,9 @@
 "use strict";
 /**
  * 登入驗證，並取得權限資料
- * @param  {} req
- * @param  {} res
+ * @param  {} req 輸入data{account[客戶帳號]，password[密碼]，type[客戶類型C/S],googletoken[機器人認證token]}，requester{邀請的員工工號}
+ * @param  {} res { "code" : { "type": "xxx", "message":  "xxxxx", }, "data" :  "verify test ok" }
+ * @param  {} next 無
  * @see /api/staff/users/login
  */
 module.exports.login =  async (req, res, next) => {
@@ -22,8 +23,10 @@ module.exports.login =  async (req, res, next) => {
 	const dateFormat = require("date-format");
 	const mailjson=require("../helper/CustodianMail");
 	//prepare data
-	const mailapi = config[process.env.NODE_ENV].Cust_MailServer.policy + "://" + 
+	const cust_mailapi = config[process.env.NODE_ENV].Cust_MailServer.policy + "://" + 
 	config[process.env.NODE_ENV].Cust_MailServer.host + ":" + config[process.env.NODE_ENV].Cust_MailServer.port+"/"+config[process.env.NODE_ENV].Cust_MailServer.api;
+	const service_mailapi = config[process.env.NODE_ENV].local_MailServer.policy + "://" + 
+	config[process.env.NODE_ENV].local_MailServer.host + ":" + config[process.env.NODE_ENV].local_MailServer.port+"/"+config[process.env.NODE_ENV].local_MailServer.api;
 	try{
 		let return_prototype = {	
 			"user":  			"", 
@@ -44,141 +47,155 @@ module.exports.login =  async (req, res, next) => {
 		if(!req.body.data.hasOwnProperty("type") || req.body.data.type === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("googletoken") || req.body.data.googletoken === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.hasOwnProperty("requester") || req.body.requester === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
-		let strtoday=dateFormat.asString("yyyy/MM/dd hh:mm:ss", new Date());
-		let inputaccount=req.body.data.account;
-		let inputpassword=req.body.data.password;
-		let inputtype=req.body.data.type;
-		//let inputgoogletoken=req.body.data.googletoken;
-		let inputrequester=req.body.requester;
-		// check user is existed
-		let conditions_account = { "account":inputaccount ,"sino_account":""};
-		let conditions_cust = [{"key":"account","value":inputaccount},{"key":"Custs.acc_type","value":inputtype}];
-		// check google token
-		/*
-		const humanCheck = await axios.post("https://www.google.com/recaptcha/api/siteverify?secret=6LcIUGEUAAAAADhZJN7OcfJtBUisRh1TP7L8qeQX&response="+inputgoogletoken+"&remoteip="+inputrequester);
-		if(typeof(humanCheck)!=undefined && humanCheck.success==false)
-		{
-			debug("機器人認證失敗");
-			throw(new Error("ERROR_ROBORT_CHECK"));
-		}
-		*/
-		let cust_account=await CustAccountRepository.getCust_Account_and_Custs(conditions_cust);
-		if(cust_account.length<1)
-		{
-			debug("帳號或密碼錯誤。");
-			throw(new Error("ERROR_WRONG_ACCOUNT_OR_PASSWORD"));
-		}
-		else if(cust_account[0].status!="A")
-		{
-			switch(cust_account[0].status) 
+		let isInputDataVaild = await utility.checkInputData(req.body.data);
+		if(isInputDataVaild){
+			let strtoday=dateFormat.asString("yyyy/MM/dd hh:mm:ss", new Date());
+			let inputaccount=req.body.data.account;
+			let inputpassword=req.body.data.password;
+			let inputtype=req.body.data.type;
+			//let inputgoogletoken=req.body.data.googletoken;
+			let inputrequester=req.body.requester;
+			// check user is existed
+			let conditions_account = { "account":inputaccount ,"sino_account":""};
+			let conditions_cust = [{"key":"account","value":inputaccount},{"key":"Custs.acc_type","value":inputtype}];
+			// check google token
+			/*
+			const humanCheck = await axios.post("https://www.google.com/recaptcha/api/siteverify?secret=6LcIUGEUAAAAADhZJN7OcfJtBUisRh1TP7L8qeQX&response="+inputgoogletoken+"&remoteip="+inputrequester);
+			if(typeof(humanCheck)!=undefined && humanCheck.success==false)
 			{
-			case "N":
-				throw(new Error("ERROR_ACCOUNT_STATUS_N"));
-			case "U":
-				throw(new Error("ERROR_ACCOUNT_STATUS_U"));
-			case "V":
-				throw(new Error("ERROR_ACCOUNT_STATUS_V"));
-			case "L":
-				throw(new Error("ERROR_ACCOUNT_STATUS_L"));
-			default:
-				throw(new Error("ERROR_ACCOUNT_STATUS_default"));
+				debug("機器人認證失敗");
+				throw(new Error("ERROR_ROBORT_CHECK"));
 			}
-		}
-		else if(cust_account[0].acc_status=="0")
-		{
-			cust_account[0].status="L";
-			cust_account[0].edit_date=strtoday;
-			let update_Cust_Account = 
+			*/
+			let cust_account=await CustAccountRepository.getCust_Account_and_Custs(conditions_cust);
+			if(cust_account.length<1)
 			{
-				"count":0,
-				"status":"L",
-				"edit_date":strtoday,
-			};
-			conditions_account.sino_account=cust_account[0].sino_account;
-			await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_account);
-			let cust_account_log=utility.createAccountLog("I",inputrequester,strtoday,cust_account[0]);
-			await CustAccountRepository.createCust_Account_Log(cust_account_log);
-			throw(new Error("ERROR_ACCOUNT_STATUS_0"));
-		}
-		else if(cust_account[0].count>2)
-		{
-			debug("帳號密碼錯誤三次。");
-			cust_account[0].count=cust_account[0].count+1;
-			cust_account[0].status="L";
-			cust_account[0].edit_date=strtoday;
-			//UPDATE
-			let update_Cust_Account = 
+				debug("帳號或密碼錯誤。");
+				throw(new Error("ERROR_WRONG_ACCOUNT_OR_PASSWORD"));
+			}
+			else if(cust_account[0].status!="A")
 			{
-				"status":"L",
-				"count":cust_account[0].count,
-				"edit_date":strtoday,
-			};
-			conditions_account.sino_account=cust_account[0].sino_account;
-			await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_account);
-			let cust_account_log=utility.createAccountLog("I",inputrequester,strtoday,cust_account[0]);
-			await CustAccountRepository.createCust_Account_Log(cust_account_log);
-			//debug(set_result);
-			//debug(create_log_result);
-			let lock_mail_json=mailjson.lock_password_fail_mail(cust_account[0].email,"");
-			let lock_mail_json_service=mailjson.lock_password_fail_mail_service(mailjson.adminEmail(),cust_account[0].name,cust_account[0].account);
-			await axios.post(mailapi,lock_mail_json);
-			await axios.post(mailapi,lock_mail_json_service);
-			throw(new Error("ERROR_PASSWORD_INVALID"));
-		}
-		else if(cust_account[0].password!=utility.encryption(inputpassword+cust_account[0].passwordsalt))
-		{
-			//UPDATE
-			debug("帳號密碼錯誤，三次以內。"+cust_account[0].passwordsalt+"  "+cust_account[0].password+"   "+utility.encryption(inputpassword+cust_account[0].passwordsalt));
-			cust_account[0].count=cust_account[0].count+1;
-			cust_account[0].edit_date=strtoday;
-			let update_Cust_Account = 
+				switch(cust_account[0].status) 
+				{
+				case "N":
+					throw(new Error("ERROR_ACCOUNT_STATUS_N"));
+				case "U":
+					throw(new Error("ERROR_ACCOUNT_STATUS_U"));
+				case "V":
+					throw(new Error("ERROR_ACCOUNT_STATUS_V"));
+				case "L":
+					throw(new Error("ERROR_ACCOUNT_STATUS_L"));
+				default:
+					throw(new Error("ERROR_ACCOUNT_STATUS_default"));
+				}
+			}
+			else if(cust_account[0].acc_status!="1")
 			{
-				"count":cust_account[0].count,
-				"edit_date":strtoday,
-			};
-			conditions_account.sino_account=cust_account[0].sino_account;
-			let set_result = await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_account);
-			let cust_account_log=utility.createAccountLog("I",inputrequester,strtoday,cust_account[0]);
-			let create_log_result = await CustAccountRepository.createCust_Account_Log(cust_account_log);
-			debug(set_result);
-			debug(create_log_result);
-			throw(new Error("ERROR_WRONG_ACCOUNT_OR_PASSWORD"));
-		}
-		else
-		{
-			debug("登入成功");
+				cust_account[0].status="L";
+				cust_account[0].edit_date=strtoday;
+				let update_Cust_Account = 
+				{
+					"count":0,
+					"status":"L",
+					"edit_date":strtoday,
+				};
+				conditions_account.sino_account=cust_account[0].sino_account;
+				await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_account);
+				let cust_account_log=utility.createAccountLog("I",inputrequester,strtoday,cust_account[0]);
+				await CustAccountRepository.createCust_Account_Log(cust_account_log);
+				throw(new Error("ERROR_ACCOUNT_STATUS_0"));
+			}
+			else if(cust_account[0].count>2)
+			{
+				debug("帳號密碼錯誤三次。");
+				cust_account[0].count=cust_account[0].count+1;
+				cust_account[0].status="L";
+				cust_account[0].edit_date=strtoday;
+				//UPDATE
+				let update_Cust_Account = 
+				{
+					"status":"L",
+					"count":cust_account[0].count,
+					"edit_date":strtoday,
+				};
+				conditions_account.sino_account=cust_account[0].sino_account;
+				await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_account);
+				let cust_account_log=utility.createAccountLog("I",inputrequester,strtoday,cust_account[0]);
+				await CustAccountRepository.createCust_Account_Log(cust_account_log);
+				//debug(set_result);
+				//debug(create_log_result);
+				let lock_mail_json=mailjson.lock_password_fail_mail(cust_account[0].email,cust_account[0].account,"");
+				let lock_mail_json_service=mailjson.lock_password_fail_mail_service(mailjson.adminEmail(),cust_account[0].name,cust_account[0].account);
+				await axios.post(cust_mailapi,lock_mail_json).then(
+					function (res) 
+					{
+						let send_mail_result=res.data.toString().trim();
+						//if(send_mail_result=== "email error !")
+						if(send_mail_result!== "success !")
+						{
+							throw(new Error("ERROR_SEND_MAIL"));
+						}
+					});
+				await axios.post(service_mailapi,lock_mail_json_service);
+				throw(new Error("ERROR_PASSWORD_INVALID"));
+			}
+			else if(cust_account[0].password!=utility.encryption(inputpassword+cust_account[0].passwordsalt))
+			{
+				//UPDATE
+				debug("帳號密碼錯誤，三次以內。"+cust_account[0].passwordsalt+"  "+cust_account[0].password+"   "+utility.encryption(inputpassword+cust_account[0].passwordsalt));
+				cust_account[0].count=cust_account[0].count+1;
+				cust_account[0].edit_date=strtoday;
+				let update_Cust_Account = 
+				{
+					"count":cust_account[0].count,
+					"edit_date":strtoday,
+				};
+				conditions_account.sino_account=cust_account[0].sino_account;
+				let set_result = await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_account);
+				let cust_account_log=utility.createAccountLog("I",inputrequester,strtoday,cust_account[0]);
+				let create_log_result = await CustAccountRepository.createCust_Account_Log(cust_account_log);
+				debug(set_result);
+				debug(create_log_result);
+				throw(new Error("ERROR_WRONG_ACCOUNT_OR_PASSWORD"));
+			}
+			else
+			{
+				debug("登入成功");
 
-			const permissions = await custRepository.getPermissionsOfCust(cust_account[0].account, cust_account[0].sino_account);
-			const roles = await custRepository.getRolesOfCust(cust_account[0].account, cust_account[0].sino_account);
-			const products = await custRepository.getProductsOfCust(cust_account[0].account, cust_account[0].sino_account);
+				const permissions = await custRepository.getPermissionsOfCust(cust_account[0].account, cust_account[0].sino_account);
+				const roles = await custRepository.getRolesOfCust(cust_account[0].account, cust_account[0].sino_account);
+				const products = await custRepository.getProductsOfCust(cust_account[0].account, cust_account[0].sino_account);
 
-			return_prototype = {
-				"user":  			cust_account[0].account, 
-				"user_name":   		cust_account[0].name,
-				"type": 			cust_account[0].acc_type, 
-				"sino_account":		cust_account[0].sino_account, 
-				"permission_list": 	permissions,
-				"product_list":		products,
-				"role_list":		roles,
-				"system":			"CustodianCustWeb",
-			};
-			jwt_sign_prototype = 
-			{				
-				"user":  cust_account[0].accounthash, 			
-			};
-			debug(return_prototype);
-	
-			//get token
-			const local = 	config[process.env.NODE_ENV].JwtService_api.policy + "://" + 
-							config[process.env.NODE_ENV].JwtService_api.host + ":" + 
-							config[process.env.NODE_ENV].JwtService_api.port;
-			const token = await axios.post(local + "/api/sign", { "data": jwt_sign_prototype,"system": "CustodianCustWeb"});
-			debug(token.data.data);		
-			return_prototype["access_token"] = token.data.data;
-			res.send({  
-				"code" : messageHandler.infoHandler("INFO_LOGIN_SUCCESS"), 
-				"data": return_prototype
-			});
+				return_prototype = {
+					"user":  			cust_account[0].account, 
+					"user_name":   		cust_account[0].name,
+					"type": 			cust_account[0].acc_type, 
+					"sino_account":		cust_account[0].sino_account, 
+					"permission_list": 	permissions,
+					"product_list":		products,
+					"role_list":		roles,
+					"system":			"CustodianCustWeb",
+				};
+				jwt_sign_prototype = 
+				{				
+					"user":  cust_account[0].accounthash, 			
+				};
+				debug(return_prototype);
+		
+				//get token
+				const local = 	config[process.env.NODE_ENV].JwtService_api.policy + "://" + 
+								config[process.env.NODE_ENV].JwtService_api.host + ":" + 
+								config[process.env.NODE_ENV].JwtService_api.port;
+				const token = await axios.post(local + "/api/sign", { "data": jwt_sign_prototype,"system": "CustodianCustWeb"});
+				debug(token.data.data);		
+				return_prototype["access_token"] = token.data.data;
+				res.send({  
+					"code" : messageHandler.infoHandler("INFO_LOGIN_SUCCESS"), 
+					"data": return_prototype
+				});
+			}
+		}else{
+			throw(new Error("ERROR_BAD_REQUEST"));
 		}
 	}
 	catch(err){
@@ -188,10 +205,10 @@ module.exports.login =  async (req, res, next) => {
 
 /**
  * JWT token 驗證
- * @param  {} req
- * @param  {} res
- * @param  {} next
- * @see /api/staff/users/verify
+ * @param  {} req 輸入data{},token{jwtToken},requester{邀請的員工工號}
+ * @param  {} res { "code" : { "type": "xxx", "message":  "xxxxx", }, "data" :  "verify test ok" }
+ * @param  {} next 無
+ * @see /api/cust/jwtverify
  */
 module.exports.jwtverify =  async (req, res, next) => {
 	try{
@@ -203,6 +220,8 @@ module.exports.jwtverify =  async (req, res, next) => {
 		const custRepository = require("../repositories/CustRepository");
 		
 		if(!req.body.hasOwnProperty("data")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
+		if(!req.body.hasOwnProperty("requester")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
+		if(!req.body.hasOwnProperty("token")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
 
 		let return_prototype = {
 			"user":  			"", 
@@ -220,7 +239,7 @@ module.exports.jwtverify =  async (req, res, next) => {
 		};
 
 		const local = config[process.env.NODE_ENV].JwtService_api.policy + "://" + config[process.env.NODE_ENV].JwtService_api.host + ":" + config[process.env.NODE_ENV].JwtService_api.port;
-		const jwt_user_data = await axios.post(local + "/api/verify", { "token": req.body.data.token, "system": "CustodianCustWeb",}); 
+		const jwt_user_data = await axios.post(local + "/api/verify", { "token": req.body.token, "system": "CustodianCustWeb",}); 
 		debug(jwt_user_data.data);
 		if(jwt_user_data.data.login){
 			let conditions_cust = [{"key":"accounthash","value":jwt_user_data.data.user}];
@@ -281,7 +300,7 @@ module.exports.jwtverify =  async (req, res, next) => {
  * @see /api/staff/custs/create
  */
 module.exports.inviteCust = async (req, res, next) => 
-{
+{	
 	try
 	{
 		const messageHandler = require("../helper/MessageHandler");
@@ -294,6 +313,7 @@ module.exports.inviteCust = async (req, res, next) =>
 		const mailjson=require("../helper/CustodianMail");
 		let dateFormat = require("date-format");
 		const utility=require("../helper/Utility");
+		const crypto = require("crypto");
 		const attributes=
 		[
 			["account_no", 	"account_no"], 
@@ -304,141 +324,92 @@ module.exports.inviteCust = async (req, res, next) =>
 			["acc_type", "acc_type"], 
 		];
 		//prepare data
-		const mailapi = config[process.env.NODE_ENV].Cust_MailServer.policy + "://" + 
+		const cust_mailapi = config[process.env.NODE_ENV].Cust_MailServer.policy + "://" + 
 						config[process.env.NODE_ENV].Cust_MailServer.host + ":" + config[process.env.NODE_ENV].Cust_MailServer.port+"/"+config[process.env.NODE_ENV].Cust_MailServer.api;
 		let salt = uuidV1(); 
 		let custurl = config[process.env.NODE_ENV].CustodianCustWeb.policy + "://" + 
-						config[process.env.NODE_ENV].CustodianCustWeb.host + ":" + config[process.env.NODE_ENV].CustodianCustWeb.port+"/verify="+salt;
-		let invite_mail_json=mailjson.invitemail("temp",custurl);
+						config[process.env.NODE_ENV].CustodianCustWeb.domain+ "/verify="+salt;
 		let strtoday=dateFormat.asString("yyyy/MM/dd hh:mm:ss", new Date());
 		// let strexpire_date=utility.setDate(new Date(),"yyyy/MM/dd hh:mm:ss",0,1,0,0);
 		let strexpire_date=dateFormat.asString("yyyy/MM/dd hh:mm:ss", new Date((new Date().setDate(new Date().getDate()+1))));
 		// let strexpire_date=dateFormat.asString("yyyy/MM/dd hh:mm:ss", (new Date().getDate()+1));
+		let RandomPW = crypto.randomBytes(16).toString("base64").substr(0, 16);
+		let RandomPWSalt = crypto.randomBytes(16).toString("base64").substr(0, 16);
 		debug(strexpire_date);
 		// check parameters
 		if(!req.body.hasOwnProperty("data")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.hasOwnProperty("requester") || req.body.requester === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("account_no") || req.body.data.account_no === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("sino_account")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
+		let isInputDataVaild = await utility.checkInputData(req.body.data);
+		if(isInputDataVaild){
+			// setup conditions
+			let conditions = { "account_no":req.body.data.account_no ,"sino_account":req.body.data.sino_account };
+			let conditions_account = { "account":req.body.data.account_no ,"sino_account":req.body.data.sino_account };
+			// check existed
+			const isCustsExisted = await CustRepository.isCustsExisted(conditions);
+			const isCust_AccountExisted = await CustAccountRepository.isCustAccountsExisted(conditions_account);
+			let CheckPass=true;
+			if(!isCustsExisted)
+			{
+				CheckPass=false;
+				res.send({	
+					//"code": (dataCust.length === 0) ? messageHandler.infoHandler("INFO_NO_DATA") : messageHandler.infoHandler("INFO_READ_DATA_SUCCESS"),
+					"code": messageHandler.infoHandler("INFO_NOT_EXISTED_USER"),
+					"data": [], 
+				});
+			}
+			// get Custs Data
+			const dataCust = await CustRepository.getCusts(attributes,conditions);	
+			debug(dataCust);	
+			//get Cust_Account Data
+			if(dataCust[0].email=="")
+			{
+				CheckPass=false;
+				res.send({	
+					"code": messageHandler.infoHandler("INFO_NO_EMAIL"),
+					"data": [], 
+				});
+			}
+			else if(dataCust[0].acc_status!=="1")
+			{
+				CheckPass=false;
+				res.send({
+					"code": messageHandler.errorHandler(new Error("ERROR_ACCOUNT_STATUS_0")),
+					"data": [], 
+				});
+			}
+			let invite_mail_json=mailjson.invitemail(dataCust[0].email,dataCust[0].account_no,custurl);
+			//invite_mail_json.receivers=dataCust[0].email;
 
-		// setup conditions
-		let conditions = { "account_no":req.body.data.account_no ,"sino_account":req.body.data.sino_account };
-		let conditions_account = { "account":req.body.data.account_no ,"sino_account":req.body.data.sino_account };
-		// check existed
-		const isCustsExisted = await CustRepository.isCustsExisted(conditions);
-		const isCust_AccountExisted = await CustAccountRepository.isCustAccountsExisted(conditions_account);
-		let CheckPass=true;
-		if(!isCustsExisted)
-		{
-			CheckPass=false;
-			res.send({	
-				//"code": (dataCust.length === 0) ? messageHandler.infoHandler("INFO_NO_DATA") : messageHandler.infoHandler("INFO_READ_DATA_SUCCESS"),
-				"code": messageHandler.infoHandler("INFO_NOT_EXISTED_USER"),
-				"data": [], 
-			});
-		}
-		// get Custs Data
-		const dataCust = await CustRepository.getCusts(attributes,conditions);		
-		//get Cust_Account Data
-		if(dataCust[0].email=="")
-		{
-			CheckPass=false;
-			res.send({	
-				"code": messageHandler.infoHandler("INFO_NO_EMAIL"),
-				"data": [], 
-			});
-		}
-		else if(dataCust[0].acc_status!="1")
-		{
-			CheckPass=false;
-			res.send({	
-				"code": messageHandler.infoHandler("INFO_USER_NOT_ENABLE"),
-				"data": [], 
-			});
-		}
-		invite_mail_json.receivers=dataCust[0].email;
-		if(!isCust_AccountExisted && CheckPass)
-		{
-			// perpare Cust_Account
-			// 2018/08/08 新增 account hash
-			let bytes=[] ;
-			let accountchar;
-			let accountsalt=utility.randomNumber(9999999999999999);
-			let account_id=dataCust[0].account_no;
-			let accounthash="";
-			for (let i = 0; i < account_id.length; ++i) 
+			if(!isCust_AccountExisted && CheckPass)
 			{
-				accountchar = account_id.charCodeAt(i);
-				bytes = bytes.concat(Math.round([accountchar/9999999999999999*accountsalt]));
-				//debug("password Char "+i+" ="+accountchar);
-			}
-			for(let byte_i=0;byte_i<bytes.length;byte_i++)
-			{
-				accounthash=accounthash+bytes[byte_i].toString();
-			}
-			//debug("salt="+accountsalt+"  account_hash="+accounthash);
-			let Cust_Account = 
-			{
-				"account":dataCust[0].account_no,
-				"sino_account":dataCust[0].sino_account,
-				"password":"",
-				"passwordsalt":"",
-				"accountsalt":accountsalt,
-				"accounthash":accounthash,
-				"name":dataCust[0].account_name,
-				"phone":"",
-				"status":"U",
-				"url":salt,
-				"reset_url":"",
-				"count":0,
-				"mail_count":0,
-				"verify_code":"",
-				"url_expire":strexpire_date,
-				"reset_url_expire":"",
-				"expire_date":"",
-				"create_date":strtoday,
-				"edit_date":strtoday,
-			};
-			const create_result = await CustAccountRepository.createCust_Account(Cust_Account);
-			let account_log=utility.createAccountLog("I",req.body.requester,strtoday,Cust_Account);
-			const create_log_result = await CustAccountRepository.createCust_Account_Log(account_log);
-			//debug("send mail"+mailapi+"  "+invite_mail_json.receivers+" \n"+invite_mail_json.content);
-			await axios.post(mailapi,invite_mail_json);
-			//debug(custs);
-			res.send({	
-				"code": (create_result ===0 &&  create_log_result===0) ? messageHandler.errorHandler("ERROR_INTERNAL_SERVER_ERROR") : messageHandler.infoHandler("INFO_READ_DATA_SUCCESS"),
-				"data": [], 
-			});
-		}
-		else if(CheckPass)
-		{
-			// get Cust_Account Data
-			const dataCustAccount = await CustAccountRepository.getCust_Account(conditions_account);	
-			if(dataCustAccount[0].status=="U" || dataCustAccount[0].status=="N")
-			{
-				//UPDATE
-				let update_Cust_Account = 
+				// perpare Cust_Account
+				// 2018/08/08 新增 account hash
+				let bytes=[] ;
+				let accountchar;
+				let accountsalt=utility.randomNumber(9999999999999999);
+				let account_id=dataCust[0].account_no;
+				let accounthash="";
+				for (let i = 0; i < account_id.length; ++i) 
 				{
-					"status":"U",
-					"url":salt,
-					"count":0,
-					"mail_count":0,
-					"verify_code":"",
-					"url_expire":strexpire_date,
-					"reset_url_expire":"",
-					"expire_date":"",
-					"create_date":strtoday,
-					"edit_date":strtoday,
-				};
-				const set_result = await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_account);
-				let Cust_Account_Log = 
+					accountchar = account_id.charCodeAt(i);
+					bytes = bytes.concat(Math.round([accountchar/9999999999999999*accountsalt]));
+					//debug("password Char "+i+" ="+accountchar);
+				}
+				for(let byte_i=0;byte_i<bytes.length;byte_i++)
 				{
-					"action_type":"I",
-					"action_date":strtoday,
-					"action_user":req.body.requester,
+					accounthash=accounthash+bytes[byte_i].toString();
+				}
+				//debug("salt="+accountsalt+"  account_hash="+accounthash);
+				let Cust_Account = 
+				{
 					"account":dataCust[0].account_no,
 					"sino_account":dataCust[0].sino_account,
-					"password":"",
+					"password":RandomPW,
+					"passwordsalt":RandomPWSalt,
+					"accountsalt":accountsalt,
+					"accounthash":accounthash,
 					"name":dataCust[0].account_name,
 					"phone":"",
 					"status":"U",
@@ -453,21 +424,94 @@ module.exports.inviteCust = async (req, res, next) =>
 					"create_date":strtoday,
 					"edit_date":strtoday,
 				};
-				const create_log_result = await CustAccountRepository.createCust_Account_Log(Cust_Account_Log);
-				debug("send mail"+mailapi+"  "+invite_mail_json.receivers+" \n"+invite_mail_json.content);
-				const send_mail_result = await axios.post(mailapi,invite_mail_json);
+				let create_result = await CustAccountRepository.createCust_Account(Cust_Account);
+				let account_log=utility.createAccountLog("I",req.body.requester,strtoday,Cust_Account);
+				let create_log_result = await CustAccountRepository.createCust_Account_Log(account_log);
+				await axios.post(cust_mailapi,invite_mail_json).then(
+					function (res) 
+					{
+						let send_mail_result=res.data.toString().trim();
+						//if(send_mail_result=== "email error !")
+						if(send_mail_result!== "success !")
+						{
+							throw(new Error("ERROR_SEND_MAIL"));
+						}
+					});
 				res.send({	
-					"code": (set_result ===0 && create_log_result===0 && send_mail_result===0) ? messageHandler.errorHandler("ERROR_INTERNAL_SERVER_ERROR") : messageHandler.infoHandler("INFO_READ_DATA_SUCCESS"),
+					"code": (create_result ===0 &&  create_log_result===0) ? messageHandler.errorHandler(new Error("ERROR_INTERNAL_SERVER_ERROR")) : messageHandler.infoHandler("INFO_READ_DATA_SUCCESS"),
 					"data": [], 
 				});
 			}
-			else
+			else if(CheckPass)
 			{
-				res.send({	
-					"code": messageHandler.infoHandler("INFO_USER_ALREADY_ACTIVATED"),
-					"data": [], 
-				});
+				// get Cust_Account Data
+				const dataCustAccount = await CustAccountRepository.getCust_Account(conditions_account);	
+				if(dataCustAccount[0].status=="U" || dataCustAccount[0].status=="N")
+				{
+					//UPDATE
+					let update_Cust_Account = 
+					{
+						"status":"U",
+						"url":salt,
+						"count":0,
+						"mail_count":0,
+						"verify_code":"",
+						"url_expire":strexpire_date,
+						"reset_url_expire":"",
+						"expire_date":"",
+						"create_date":strtoday,
+						"edit_date":strtoday,
+					};
+					const set_result = await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_account);
+					let Cust_Account_Log = 
+					{
+						"action_type":"I",
+						"action_date":strtoday,
+						"action_user":req.body.requester,
+						"account":dataCust[0].account_no,
+						"sino_account":dataCust[0].sino_account,
+						"password":RandomPW,
+						"name":dataCust[0].account_name,
+						"phone":"",
+						"status":"U",
+						"url":salt,
+						"reset_url":"",
+						"count":0,
+						"mail_count":0,
+						"verify_code":"",
+						"url_expire":strexpire_date,
+						"reset_url_expire":"",
+						"expire_date":"",
+						"create_date":strtoday,
+						"edit_date":strtoday,
+					};
+					let create_log_result = await CustAccountRepository.createCust_Account_Log(Cust_Account_Log);
+					debug("send mail"+cust_mailapi+"  "+invite_mail_json.receivers+" \n"+invite_mail_json.content);
+					await axios.post(cust_mailapi,invite_mail_json).then(
+						function (res) 
+						{
+							let send_mail_result=res.data.toString().trim();
+							//if(send_mail_result=== "email error !")
+							if(send_mail_result!== "success !")
+							{
+								throw(new Error("ERROR_SEND_MAIL"));
+							}
+						});
+					res.send({	
+						"code": (set_result ===0 && create_log_result===0) ? messageHandler.errorHandler(new Error("ERROR_INTERNAL_SERVER_ERROR")) : messageHandler.infoHandler("INFO_READ_DATA_SUCCESS"),
+						"data": [], 
+					});
+				}
+				else
+				{
+					res.send({	
+						"code": messageHandler.infoHandler("INFO_USER_ALREADY_ACTIVATED"),
+						"data": [], 
+					});
+				}
 			}
+		}else{
+			throw(new Error("ERROR_BAD_REQUEST"));
 		}
 	}
 	catch(err){ next(err); }	
@@ -483,6 +527,7 @@ module.exports.url_check= async (req, res, next) =>{
 	const messageHandler = require("../helper/MessageHandler");
 	const CustAccountRepository = require("../repositories/CustAccountRepository");
 	const debug = require("debug")("CustodianApi:CustAccountService.url_check");
+	const utility=require("../helper/Utility");
 	try
 	{
 		//prepare data
@@ -497,43 +542,48 @@ module.exports.url_check= async (req, res, next) =>{
 		if(!req.body.hasOwnProperty("requester")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("type") || req.body.data.type === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("token") || req.body.data.token === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
-		if(!inputtype===reset_url || !inputtype===url)
-		{
-			debug("type input error "+inputtype);
-			throw(new Error("ERROR_URL_NOT_FOUND"));
-		}
-		if(inputtype===reset_url)
-		{
-			let conditions_account = { reset_url:inputtoken};
-			isCustsExisted = await CustAccountRepository.isCustAccountsExisted(conditions_account);
-			debug(isCustsExisted);
-			if(!isCustsExisted)
+		let isInputDataVaild = await utility.checkInputData(req.body.data);
+		if(isInputDataVaild){
+			if(!inputtype===reset_url || !inputtype===url)
 			{
+				debug("type input error "+inputtype);
 				throw(new Error("ERROR_URL_NOT_FOUND"));
+			}
+			if(inputtype===reset_url)
+			{
+				let conditions_account = { reset_url:inputtoken};
+				isCustsExisted = await CustAccountRepository.isCustAccountsExisted(conditions_account);
+				debug(isCustsExisted);
+				if(!isCustsExisted)
+				{
+					throw(new Error("ERROR_URL_NOT_FOUND"));
+				}
+				else
+				{
+					res.send({	
+						"code": messageHandler.infoHandler("INFO_READ_DATA_SUCCESS"),
+						"data": [], 
+					});
+				}
 			}
 			else
 			{
-				res.send({	
-					"code": messageHandler.infoHandler("INFO_READ_DATA_SUCCESS"),
-					"data": [], 
-				});
+				let conditions_account = { url:inputtoken};
+				isCustsExisted = await CustAccountRepository.isCustAccountsExisted(conditions_account);
+				if(!isCustsExisted)
+				{
+					throw(new Error("ERROR_URL_NOT_FOUND"));
+				}
+				else
+				{
+					res.send({	
+						"code": messageHandler.infoHandler("INFO_READ_DATA_SUCCESS"),
+						"data": [], 
+					});
+				}
 			}
-		}
-		else
-		{
-			let conditions_account = { url:inputtoken};
-			isCustsExisted = await CustAccountRepository.isCustAccountsExisted(conditions_account);
-			if(!isCustsExisted)
-			{
-				throw(new Error("ERROR_URL_NOT_FOUND"));
-			}
-			else
-			{
-				res.send({	
-					"code": messageHandler.infoHandler("INFO_READ_DATA_SUCCESS"),
-					"data": [], 
-				});
-			}
+		}else{
+			throw(new Error("ERROR_BAD_REQUEST"));
 		}
 	}catch(err){
 		next(err);
@@ -560,11 +610,13 @@ module.exports.resetPassword = async (req, res, next) =>{
 	try{
 		//prepare data
 		let salt = uuidV1(); 
-		const mailapi = config[process.env.NODE_ENV].Cust_MailServer.policy + "://" + 
-		config[process.env.NODE_ENV].Cust_MailServer.host + ":" + config[process.env.NODE_ENV].Cust_MailServer.port+"/"+config[process.env.NODE_ENV].Cust_MailServer.api;
+		const cust_mailapi = config[process.env.NODE_ENV].Cust_MailServer.policy + "://" + 
+			config[process.env.NODE_ENV].Cust_MailServer.host + ":" + config[process.env.NODE_ENV].Cust_MailServer.port+"/"+config[process.env.NODE_ENV].Cust_MailServer.api;
+		const service_mailapi = config[process.env.NODE_ENV].local_MailServer.policy + "://" + 
+			config[process.env.NODE_ENV].local_MailServer.host + ":" + config[process.env.NODE_ENV].local_MailServer.port+"/"+config[process.env.NODE_ENV].local_MailServer.api;		
 		let reset_url = config[process.env.NODE_ENV].CustodianCustWeb.policy + "://" + 
-		config[process.env.NODE_ENV].CustodianCustWeb.host + ":" + config[process.env.NODE_ENV].CustodianCustWeb.port+"/verify_reset="+salt;
-		let reset_mail_json=mailjson.resetpassmail("temp",reset_url);
+		config[process.env.NODE_ENV].CustodianCustWeb.domain+ "/verify_reset="+salt;
+		//let reset_mail_json=mailjson.resetpassmail("temp",reset_url);
 		let reset_mail_service_json;
 		let status_V="V";
 		// let datenow=new Date();
@@ -579,127 +631,142 @@ module.exports.resetPassword = async (req, res, next) =>{
 		if(!req.body.hasOwnProperty("requester")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("account") || req.body.data.account === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("useremail") || req.body.data.useremail === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
-		let inputAccount=req.body.data.account;
-		let inputUserEmail=req.body.data.useremail;
-		let inputUserIP=req.body.requester;
-		let condition_account = [{"key":"account","value":inputAccount},{"key":"email","value":inputUserEmail}];
-		let condition_reset = [{"key":"account","operator":"=","value":inputAccount},{"key":"mail","operator":"=","value":inputUserEmail},{"key":"create_date","operator":">=","value":strtoday},{"key":"create_date","operator":"<","value":strnextday}];
-		let conditions_update = { "account":"" ,"sino_account":""};
-		let set_result;
-		let account_log;
-		let create_result;
-		let create_log_result;
-		//阻擋惡意攻擊IP
-		let conditions_ip=[{"key":"cust_ip","operator":"=","value":req.body.requester},{"key":"create_date","operator":">=","value":strtoday},{"key":"create_date","operator":"<","value":strnextday}];
-		let query_byIp=await CustPwdResetRepository.getCustPwdReset(conditions_ip);
-		if(query_byIp.length>=10)
-		{
-			let new_Reset_Pwd_Log = 
+		let isInputDataVaild = await utility.checkInputData(req.body.data);
+		if(isInputDataVaild){
+			let inputAccount=req.body.data.account;
+			let inputUserEmail=req.body.data.useremail;
+			let inputUserIP=req.body.requester;
+			let condition_account = [{"key":"account","value":inputAccount},{"key":"email","value":inputUserEmail}];
+			let condition_reset = [{"key":"account","operator":"=","value":inputAccount},{"key":"mail","operator":"=","value":inputUserEmail},{"key":"create_date","operator":">=","value":strtoday},{"key":"create_date","operator":"<","value":strnextday}];
+			let conditions_update = { "account":"" ,"sino_account":""};
+			let set_result;
+			let account_log;
+			let create_result;
+			let create_log_result;
+			//阻擋惡意攻擊IP
+			let conditions_ip=[{"key":"cust_ip","operator":"=","value":req.body.requester},{"key":"create_date","operator":">=","value":strtoday},{"key":"create_date","operator":"<","value":strnextday}];
+			let query_byIp=await CustPwdResetRepository.getCustPwdReset(conditions_ip);
+			if(query_byIp.length>=10)
 			{
-				"account":inputAccount,
-				"mail":inputUserEmail,
-				"match":0,
-				"frequently":1,
-				"reset_url":"",
-				"cust_ip":inputUserIP,
-				"create_date":strdatenow
-			};
-			await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log);
-			let malicious_mail_service_json=mailjson.malicious_mail_service(mailjson.adminEmail(),inputUserIP,inputAccount);
-			await axios.post(mailapi,malicious_mail_service_json);
-			throw(new Error("ERROR_TOO_FREQUENTLY"));
-		}
-		//check frequency (1 day < 10 times)
-		let resetlog=await CustPwdResetRepository.getCustPwdReset(condition_reset);
-		if(resetlog.length>=10)
-		{
-			let new_Reset_Pwd_Log = 
+				let new_Reset_Pwd_Log = 
+				{
+					"account":inputAccount,
+					"mail":inputUserEmail,
+					"match":0,
+					"frequently":1,
+					"reset_url":"",
+					"cust_ip":inputUserIP,
+					"create_date":strdatenow
+				};
+				await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log);
+				let malicious_mail_service_json=mailjson.malicious_mail_service(mailjson.adminEmail(),inputUserIP,inputAccount);
+				await axios.post(service_mailapi,malicious_mail_service_json);
+				throw(new Error("ERROR_TOO_FREQUENTLY"));
+			}
+			//check frequency (1 day < 10 times)
+			let resetlog=await CustPwdResetRepository.getCustPwdReset(condition_reset);
+			if(resetlog.length>=10)
 			{
-				"account":inputAccount,
-				"mail":inputUserEmail,
-				"match":0,
-				"frequently":1,
-				"reset_url":"",
-				"cust_ip":inputUserIP,
-				"create_date":strdatenow
-			};
-			await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log);
-			let malicious_mail_service_json=mailjson.malicious_mail_service(mailjson.adminEmail(),inputUserIP,inputAccount);
-			await axios.post(mailapi,malicious_mail_service_json);
-			throw(new Error("ERROR_TOO_FREQUENTLY"));
-		}
-		else
-		{
-			let cust_account=await CustAccountRepository.getCust_Account_and_Custs(condition_account);
-			if(cust_account.length===0){
-				throw(new Error("ERROR_ACCOUNT_NOT_EXISTED"));
-			}else if(cust_account[0].status === "U"){
-				throw(new Error("ERROR_ACCOUNT_NOT_EXISTED_DATA"));
-			}else{
-				if(cust_account.length>0)
+				let new_Reset_Pwd_Log = 
 				{
-					//gen verify code and mail json
-					let verifycode=utility.randomNumber(99999999).toString();
-					reset_mail_json.receivers=inputUserEmail;
-					reset_mail_service_json=mailjson.resetpassmail_service(mailjson.adminEmail(),inputAccount,reset_url);
-					//Add Reset log
-					let new_Reset_Pwd_Log = 
+					"account":inputAccount,
+					"mail":inputUserEmail,
+					"match":0,
+					"frequently":1,
+					"reset_url":"",
+					"cust_ip":inputUserIP,
+					"create_date":strdatenow
+				};
+				await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log);
+				let malicious_mail_service_json=mailjson.malicious_mail_service(mailjson.adminEmail(),inputUserIP,inputAccount);
+				await axios.post(service_mailapi,malicious_mail_service_json);
+				throw(new Error("ERROR_TOO_FREQUENTLY"));
+			}
+			else
+			{
+				let cust_account=await CustAccountRepository.getCust_Account_and_Custs(condition_account);
+				if(cust_account.length===0){
+					throw(new Error("ERROR_ACCOUNT_NOT_EXISTED"));
+				}else if(cust_account[0].status === "U"){
+					throw(new Error("ERROR_ACCOUNT_NOT_EXISTED_DATA"));
+				}else{
+					if(cust_account.length>0)
 					{
-						"account":inputAccount,
-						"mail":inputUserEmail,
-						"match":1,
-						"frequently":0,
-						"reset_url":salt,
-						"cust_ip":inputUserIP,
-						"create_date":strdatenow
-					};
-					create_result=await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log);
-					//set account status
-					let update_Account_value = 
-					{
-						"status":status_V,
-						"reset_url":salt,
-						"verify_code":verifycode,
-						"mail_count":0,
-						"count":0,
-						"reset_url_expire":strnextdayTime,
-						"edit_date":strdatenow,
-					};
-					conditions_update.account=inputAccount;
-					conditions_update.sino_account=cust_account[0].sino_account;
-					set_result = await CustAccountRepository.set_Cust_Account(update_Account_value,conditions_update);
-					for(let INDEX=0;INDEX<cust_account.length;INDEX++)
-					{
-						account_log=utility.createAccountLog("I",req.body.requester,strdatenow,cust_account[INDEX]);
-						create_log_result= await CustAccountRepository.createCust_Account_Log(account_log);
+						//gen verify code and mail json
+						let verifycode=utility.randomNumber(99999999).toString();
+						let reset_mail_json=mailjson.resetpassmail(inputUserEmail,inputAccount,reset_url);
+						reset_mail_json.receivers=inputUserEmail;
+						reset_mail_service_json=mailjson.resetpassmail_service(mailjson.adminEmail(),inputAccount,reset_url);
+						//Add Reset log
+						let new_Reset_Pwd_Log = 
+						{
+							"account":inputAccount,
+							"mail":inputUserEmail,
+							"match":1,
+							"frequently":0,
+							"reset_url":salt,
+							"cust_ip":inputUserIP,
+							"create_date":strdatenow
+						};
+						create_result=await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log);
+						//set account status
+						let update_Account_value = 
+						{
+							"status":status_V,
+							"reset_url":salt,
+							"verify_code":verifycode,
+							"mail_count":0,
+							"count":0,
+							"reset_url_expire":strnextdayTime,
+							"edit_date":strdatenow,
+						};
+						conditions_update.account=inputAccount;
+						conditions_update.sino_account=cust_account[0].sino_account;
+						set_result = await CustAccountRepository.set_Cust_Account(update_Account_value,conditions_update);
+						for(let INDEX=0;INDEX<cust_account.length;INDEX++)
+						{
+							account_log=utility.createAccountLog("I",req.body.requester,strdatenow,cust_account[INDEX]);
+							create_log_result= await CustAccountRepository.createCust_Account_Log(account_log);
+						}
+						await axios.post(cust_mailapi,reset_mail_json).then(
+							function (res) 
+							{
+								let send_mail_result=res.data.toString().trim();
+								//if(send_mail_result=== "email error !")
+								if(send_mail_result!== "success !")
+								{
+									throw(new Error("ERROR_SEND_MAIL"));
+								}
+							});
+						await axios.post(service_mailapi,reset_mail_service_json);
+						if(set_result ===0 && create_result===0 && create_log_result===0){
+							throw(new Error("ERROR_ACCOUNT_EMAIL_INVALID"));
+						}else{
+							res.send({	
+								"code":	messageHandler.infoHandler("INFO_READ_DATA_SUCCESS"),
+								"data": [], 
+							});
+						}
 					}
-					await axios.post(mailapi,reset_mail_json);
-					await axios.post(mailapi,reset_mail_service_json);
-					if(set_result ===0 && create_result===0 && create_log_result===0){
-						throw(new Error("ERROR_ACCOUNT_EMAIL_INVALID"));
-					}else{
-						res.send({	
-							"code":	messageHandler.infoHandler("INFO_READ_DATA_SUCCESS"),
-							"data": [], 
-						});
-					}
-				}
-				else
-				{
-					let new_Reset_Pwd_Log = 
+					else
 					{
-						"account":inputAccount,
-						"mail":inputUserEmail,
-						"match":0,
-						"frequently":0,
-						"reset_url":"",
-						"cust_ip":inputUserIP,
-						"create_date":strdatenow
-					};
-					await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log);
-					throw(new Error("ERROR_NOT_EXISTED_DATA"));
+						let new_Reset_Pwd_Log = 
+						{
+							"account":inputAccount,
+							"mail":inputUserEmail,
+							"match":0,
+							"frequently":0,
+							"reset_url":"",
+							"cust_ip":inputUserIP,
+							"create_date":strdatenow
+						};
+						await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log);
+						throw(new Error("ERROR_NOT_EXISTED_DATA"));
+					}
 				}
 			}
+		}else{
+			throw(new Error("ERROR_BAD_REQUEST"));
 		}
 	}catch(err){
 		next(err);
@@ -729,131 +796,144 @@ module.exports.matching = async (req, res, next) =>
 		if(!req.body.data.hasOwnProperty("useremail") || req.body.data.useremail === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("token") || req.body.data.token === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("type") || req.body.data.type === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
-		//prepare data
-		const mailapi = config[process.env.NODE_ENV].local_MailServer.policy + "://" + 
-		config[process.env.NODE_ENV].Cust_MailServer.host + ":" + config[process.env.NODE_ENV].Cust_MailServer.port+"/"+config[process.env.NODE_ENV].Cust_MailServer.api;
-		let datenow=new Date();
-		let strtoday=dateFormat.asString("yyyy/MM/dd hh:mm:ss", new Date());
-		// let strexpire_date=utility.setDate(new Date(),"yyyy/MM/dd hh:mm:ss",0,1,0,0);
-		let strexpire_date=dateFormat.asString("yyyy/MM/dd hh:mm:ss", new Date((new Date().setMinutes(new Date().getMinutes()+5))));
-		let inputmail=req.body.data.useremail;
-		let inputToken=req.body.data.token;
-		let condition = [{"key":req.body.data.type,"value":inputToken}];
-		let conditions_update = { "account":"" ,"sino_account":""};
-		//select by token and mail 
-		let Cust_Account=await CustAccountRepository.getCust_Account_and_Custs(condition);
-		let account_log;
-		let set_result;
-		let create_log_result;
-		let custs_mail_result;
-		if(Cust_Account.length<1)
-		{
-			throw(new Error("ERROR_URL_NOT_FOUND"));
-		}
-		else
-		{
-			if(Cust_Account.length<1||Cust_Account.length>1)
+		let isInputDataVaild = await utility.checkInputData(req.body.data);
+		if(isInputDataVaild){
+			//prepare data
+			const mailapi = config[process.env.NODE_ENV].Cust_MailServer.policy + "://" + 
+			config[process.env.NODE_ENV].Cust_MailServer.host + ":" + config[process.env.NODE_ENV].Cust_MailServer.port+"/"+config[process.env.NODE_ENV].Cust_MailServer.api;
+			let datenow=new Date();
+			let strtoday=dateFormat.asString("yyyy/MM/dd hh:mm:ss", new Date());
+			// let strexpire_date=utility.setDate(new Date(),"yyyy/MM/dd hh:mm:ss",0,1,0,0);
+			let strexpire_date=dateFormat.asString("yyyy/MM/dd hh:mm:ss", new Date((new Date().setMinutes(new Date().getMinutes()+5))));
+			let inputmail=req.body.data.useremail;
+			let inputToken=req.body.data.token;
+			let condition = [{"key":req.body.data.type,"value":inputToken}];
+			let conditions_update = { "account":"" ,"sino_account":""};
+			//select by token and mail 
+			let Cust_Account=await CustAccountRepository.getCust_Account_and_Custs(condition);
+			let account_log;
+			let set_result;
+			let create_log_result;
+			if(Cust_Account.length<1)
 			{
-				//UPDATE token/mail pair count and savelog
-				for(let index=0;index<Cust_Account.length;index++)
+				throw(new Error("ERROR_URL_NOT_FOUND"));
+			}
+			else
+			{
+				if(Cust_Account.length<1||Cust_Account.length>1)
 				{
-					Cust_Account[index].mail_count=Cust_Account[index].mail_count+1;
+					//UPDATE token/mail pair count and savelog
+					for(let index=0;index<Cust_Account.length;index++)
+					{
+						Cust_Account[index].mail_count=Cust_Account[index].mail_count+1;
+						let update_Cust_Account = 
+						{
+							"mail_count":0,
+							"edit_date":strtoday,
+						};
+						conditions_update.account=Cust_Account[index].account;
+						conditions_update.sino_account=Cust_Account[index].sino_account;
+						update_Cust_Account.mail_count=Cust_Account[index].mail_count;
+						set_result = await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_update);
+						let account_log=utility.createAccountLog("I",req.body.requester,strtoday,Cust_Account[index]);
+						await CustAccountRepository.createCust_Account_Log(account_log);
+					}
+					throw(new Error("ERROR_EMAIL_UNMATCH_MUCH"));
+				}
+				else if(Cust_Account[0].mail_count>2)
+				{
+					Cust_Account[0].verify_code="";
+					Cust_Account[0].url="";
+					let update_Cust_Account = 
+					{
+						"url":"",
+						"reset_url":"",
+						"verify_code":"",
+						"edit_date":strtoday,
+					};
+					conditions_update.account=Cust_Account[0].account;
+					conditions_update.sino_account=Cust_Account[0].sino_account;
+					set_result = await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_update);
+					account_log=utility.createAccountLog("I",req.body.requester,strtoday,Cust_Account[0]);
+					await CustAccountRepository.createCust_Account_Log(account_log);
+					throw(new Error("ERROR_EMAIL_URL_MATCH_THREE_TIME"));
+				}
+				else if(Cust_Account[0].email!=inputmail)
+				{
+					Cust_Account[0].mail_count=Cust_Account[0].mail_count+1;
 					let update_Cust_Account = 
 					{
 						"mail_count":0,
 						"edit_date":strtoday,
 					};
-					conditions_update.account=Cust_Account[index].account;
-					conditions_update.sino_account=Cust_Account[index].sino_account;
-					update_Cust_Account.mail_count=Cust_Account[index].mail_count;
+					conditions_update.account=Cust_Account[0].account;
+					conditions_update.sino_account=Cust_Account[0].sino_account;
+					update_Cust_Account.mail_count=Cust_Account[0].mail_count;
 					set_result = await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_update);
-					let account_log=utility.createAccountLog("I",req.body.requester,strtoday,Cust_Account[index]);
+					let account_log=utility.createAccountLog("I",req.body.requester,strtoday,Cust_Account[0]);
 					await CustAccountRepository.createCust_Account_Log(account_log);
+					throw(new Error("ERROR_EMAIL_UNMATCH"));
 				}
-				throw(new Error("ERROR_EMAIL_UNMATCH_MUCH"));
-			}
-			else if(Cust_Account[0].mail_count>2)
-			{
-				Cust_Account[0].verify_code="";
-				Cust_Account[0].url="";
-				let update_Cust_Account = 
+				else if(typeof(Cust_Account[0].url_expire)!=undefined && Cust_Account[0].url_expire!="")
 				{
-					"url":"",
-					"reset_url":"",
-					"verify_code":"",
-					"edit_date":strtoday,
-				};
-				conditions_update.account=Cust_Account[0].account;
-				conditions_update.sino_account=Cust_Account[0].sino_account;
-				set_result = await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_update);
-				account_log=utility.createAccountLog("I",req.body.requester,strtoday,Cust_Account[0]);
-				await CustAccountRepository.createCust_Account_Log(account_log);
-				throw(new Error("ERROR_EMAIL_URL_MATCH_THREE_TIME"));
-			}
-			else if(Cust_Account[0].email!=inputmail)
-			{
-				Cust_Account[0].mail_count=Cust_Account[0].mail_count+1;
-				let update_Cust_Account = 
-				{
-					"mail_count":0,
-					"edit_date":strtoday,
-				};
-				conditions_update.account=Cust_Account[0].account;
-				conditions_update.sino_account=Cust_Account[0].sino_account;
-				update_Cust_Account.mail_count=Cust_Account[0].mail_count;
-				set_result = await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_update);
-				let account_log=utility.createAccountLog("I",req.body.requester,strtoday,Cust_Account[0]);
-				await CustAccountRepository.createCust_Account_Log(account_log);
-				throw(new Error("ERROR_EMAIL_UNMATCH"));
-			}
-			else if(typeof(Cust_Account[0].url_expire)!=undefined && Cust_Account[0].url_expire!="")
-			{
-				let url_expired_date;
-				let invite_mail_json;
-				let verifycode=utility.randomNumber(99999999).toString();
-				if(req.body.data.type=="url")
-				{
-					url_expired_date=new Date(Cust_Account[0].url_expire);
-					invite_mail_json=mailjson.verifycodemail(Cust_Account[0].email,verifycode);
-				}
-				else
-				{
-					url_expired_date=new Date(Cust_Account[0].reset_url_expire);
-					invite_mail_json=mailjson.resetverifycodemail(Cust_Account[0].email,verifycode);
-				}
-				if(datenow>url_expired_date)
-				{
-					throw(new Error("ERROR_TOKEN_EXPIRED"));
-				}
-				else 
-				{
-					conditions_update = { "account":Cust_Account[0].account ,"sino_account":Cust_Account[0].sino_account};
-					Cust_Account[0].verify_code=verifycode;
-					Cust_Account[0].expire_date=strexpire_date;
-					Cust_Account[0].url="";
-					Cust_Account[0].mail_count=Cust_Account[0].mail_count+1;
-					//UPDATE the uniq user
-					let update_Account_value = 
+					let url_expired_date;
+					let invite_mail_json;
+					let verifycode=utility.randomNumber(99999999).toString();
+					if(req.body.data.type=="url")
 					{
-						"url":"",
-						"verify_code":verifycode,
-						"mail_count":Cust_Account[0].mail_count,
-						"edit_date":strtoday,
-						"expire_date":strexpire_date,
-					};
-					set_result = await CustAccountRepository.set_Cust_Account(update_Account_value,conditions_update);
-					account_log=utility.createAccountLog("I",req.body.requester,strtoday,Cust_Account[0]);
-					create_log_result= await CustAccountRepository.createCust_Account_Log(account_log);
-					custs_mail_result = await axios.post(mailapi,invite_mail_json);
-					if(set_result ===0 && create_log_result===0 && custs_mail_result===0){
-						throw(new Error("ERROR_EMAIL_INVALID"));
-					}else{
-						res.send({	
-							"code":	messageHandler.infoHandler("INFO_READ_EMAIL_SUCCESS"), 
-						});
+						url_expired_date=new Date(Cust_Account[0].url_expire);
+						invite_mail_json=mailjson.verifycodemail(Cust_Account[0].email,Cust_Account[0].account,verifycode);
+					}
+					else
+					{
+						url_expired_date=new Date(Cust_Account[0].reset_url_expire);
+						invite_mail_json=mailjson.resetverifycodemail(Cust_Account[0].email,Cust_Account[0].account,verifycode);
+					}
+					if(datenow>url_expired_date)
+					{
+						throw(new Error("ERROR_TOKEN_EXPIRED"));
+					}
+					else 
+					{
+						conditions_update = { "account":Cust_Account[0].account ,"sino_account":Cust_Account[0].sino_account};
+						Cust_Account[0].verify_code=verifycode;
+						Cust_Account[0].expire_date=strexpire_date;
+						Cust_Account[0].url="";
+						Cust_Account[0].mail_count=Cust_Account[0].mail_count+1;
+						//UPDATE the uniq user
+						let update_Account_value = 
+						{
+							"url":"",
+							"verify_code":verifycode,
+							"mail_count":Cust_Account[0].mail_count,
+							"edit_date":strtoday,
+							"expire_date":strexpire_date,
+						};
+						set_result = await CustAccountRepository.set_Cust_Account(update_Account_value,conditions_update);
+						account_log=utility.createAccountLog("I",req.body.requester,strtoday,Cust_Account[0]);
+						create_log_result= await CustAccountRepository.createCust_Account_Log(account_log);
+						await axios.post(mailapi,invite_mail_json).then(
+							function (res) 
+							{
+								let send_mail_result=res.data.toString().trim();
+								//if(send_mail_result=== "email error !")
+								if(send_mail_result!== "success !")
+								{
+									throw(new Error("ERROR_SEND_MAIL"));
+								}
+							});
+						if(set_result ===0 && create_log_result===0){
+							throw(new Error("ERROR_EMAIL_INVALID"));
+						}else{
+							res.send({	
+								"code":	messageHandler.infoHandler("INFO_READ_EMAIL_SUCCESS"), 
+							});
+						}
 					}
 				}
 			}
+		}else{
+			throw(new Error("ERROR_BAD_REQUEST"));
 		}
 	}catch(err){
 		next(err);
@@ -879,8 +959,10 @@ module.exports.verify = async (req, res, next) =>
 	const axios = require("axios");
 	try{
 		//prepare data
-		const mailapi = config[process.env.NODE_ENV].local_MailServer.policy + "://" + 
-		config[process.env.NODE_ENV].Cust_MailServer.host + ":" + config[process.env.NODE_ENV].Cust_MailServer.port+"/"+config[process.env.NODE_ENV].Cust_MailServer.api;
+		const cust_mailapi = config[process.env.NODE_ENV].Cust_MailServer.policy + "://" + 
+			config[process.env.NODE_ENV].Cust_MailServer.host + ":" + config[process.env.NODE_ENV].Cust_MailServer.port+"/"+config[process.env.NODE_ENV].Cust_MailServer.api;
+		const service_mailapi = config[process.env.NODE_ENV].local_MailServer.policy + "://" + 
+			config[process.env.NODE_ENV].local_MailServer.host + ":" + config[process.env.NODE_ENV].local_MailServer.port+"/"+config[process.env.NODE_ENV].local_MailServer.api;
 		let datenow=new Date();
 		// let strnextdayTime=utility.setDate(new Date(),"yyyy/MM/dd hh:mm:ss",0,1,0,0);
 		let strnextdayTime=dateFormat.asString("yyyy/MM/dd hh:mm:ss", new Date((new Date().setDate(datenow.getDate()+1))));
@@ -892,126 +974,138 @@ module.exports.verify = async (req, res, next) =>
 		if(!req.body.data.hasOwnProperty("useremail") || req.body.data.useremail === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("verifycode") || req.body.data.verifycode === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("type") || req.body.data.type === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
-		let inputmail=req.body.data.useremail;
-		let inputCode=req.body.data.verifycode;
-		let condition = [{"key":"email","value":inputmail}];
-		let conditions_update = { "account":"" ,"sino_account":""};
-		//select by email
-		let Cust_Account=await CustAccountRepository.getCust_Account_and_Custs(condition);
-		let Cust_Account_Verify;
-		let account_log;
-		let set_result;
-		let create_log_result;
-		let INDEX;
-		let COUNTER=0;
-		let status_V="V";
-		let account_active_mail_json;
-		let account_active_mail_json_service;
-		if(Cust_Account.length<1)
-		{
-			throw(new Error("ERROR_EMAIL_UNMATCH"));
-		}
-		else
-		{
-			for(INDEX=0;INDEX<Cust_Account.length;INDEX++)
+		let isInputDataVaild = await utility.checkInputData(req.body.data);
+		if(isInputDataVaild){
+			let inputmail=req.body.data.useremail;
+			let inputCode=req.body.data.verifycode;
+			let condition = [{"key":"email","value":inputmail}];
+			let conditions_update = { "account":"" ,"sino_account":""};
+			//select by email
+			let Cust_Account=await CustAccountRepository.getCust_Account_and_Custs(condition);
+			let Cust_Account_Verify;
+			let account_log;
+			let set_result;
+			let create_log_result;
+			let INDEX;
+			let COUNTER=0;
+			let status_V="V";
+			let account_active_mail_json;
+			let account_active_mail_json_service;
+			if(Cust_Account.length<1)
 			{
-				if(Cust_Account[INDEX].verify_code==inputCode)
-				{
-					Cust_Account_Verify=Cust_Account[INDEX];
-					COUNTER=COUNTER+1;
-				}
+				throw(new Error("ERROR_EMAIL_UNMATCH"));
 			}
-			if(typeof(Cust_Account_Verify)!=undefined && COUNTER==1)
+			else
 			{
-				let code_expired_date;
-				if(Cust_Account_Verify.count>2)
+				for(INDEX=0;INDEX<Cust_Account.length;INDEX++)
 				{
-					Cust_Account_Verify.verify_code="";
-					Cust_Account_Verify.url="";
-					let update_Cust_Account = 
+					if(Cust_Account[INDEX].verify_code==inputCode)
 					{
-						"url":"",
-						"reset_url":"",
-						"verify_code":"",
-						"edit_date":strtoday,
-					};
-					conditions_update.account=Cust_Account_Verify.account;
-					conditions_update.sino_account=Cust_Account_Verify.sino_account;
-					set_result = await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_update);
-					account_log=utility.createAccountLog("I",req.body.requester,strtoday,Cust_Account_Verify);
-					create_log_result= await CustAccountRepository.createCust_Account_Log(account_log);
-					throw(new Error("ERROR_VERIFY_CODE_INVALID"));
+						Cust_Account_Verify=Cust_Account[INDEX];
+						COUNTER=COUNTER+1;
+					}
 				}
-				else
+				if(typeof(Cust_Account_Verify)!=undefined && COUNTER==1)
 				{
-					try
+					let code_expired_date;
+					if(Cust_Account_Verify.count>2)
 					{
-						code_expired_date=new Date(Cust_Account_Verify.expire_date);
-						debug("Is today > code_expired_date?"+datenow+" "+code_expired_date);
-						if(datenow>code_expired_date)
+						Cust_Account_Verify.verify_code="";
+						Cust_Account_Verify.url="";
+						let update_Cust_Account = 
 						{
-							throw(new Error("ERROR_VERIFY_CODE_EXPIRED"));
-						}
-						else
+							"url":"",
+							"reset_url":"",
+							"verify_code":"",
+							"edit_date":strtoday,
+						};
+						conditions_update.account=Cust_Account_Verify.account;
+						conditions_update.sino_account=Cust_Account_Verify.sino_account;
+						set_result = await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_update);
+						account_log=utility.createAccountLog("I",req.body.requester,strtoday,Cust_Account_Verify);
+						create_log_result= await CustAccountRepository.createCust_Account_Log(account_log);
+						throw(new Error("ERROR_VERIFY_CODE_INVALID"));
+					}
+					else
+					{
+						try
 						{
-							conditions_update = { "account":Cust_Account_Verify.account ,"sino_account":Cust_Account_Verify.sino_account};
-							//UPDATE the uniq user
-							let update_Account_value = {};
-							let return_data = {};
-							if(req.body.data.type === "url"){
-								Cust_Account_Verify.url="";
-								Cust_Account_Verify.reset_url=salt;
-								Cust_Account_Verify.count=0;
-								Cust_Account_Verify.mail_count=0;
-								Cust_Account_Verify.status=status_V;
-								update_Account_value = {
-									"url":"",
-									"status":status_V,
-									"reset_url":salt,
-									"count":0,
-									"mail_count":0,
-									"reset_url_expire":strnextdayTime,
-									"edit_date":strtoday,
-								};
-								return_data = {
-									"type":			"reset_url",
-									"token":		salt,
-								};
-								account_active_mail_json=mailjson.account_active_mail(Cust_Account_Verify.email,"");
-								account_active_mail_json_service=mailjson.account_active_mail_service(mailjson.adminEmail(),Cust_Account_Verify.name,Cust_Account_Verify.account);
-							}else{
-								debug("reset_url : "+Cust_Account_Verify.reset_url);
-								Cust_Account_Verify.count=0;
-								Cust_Account_Verify.mail_count=0;
-								Cust_Account_Verify.status=status_V;
-								update_Account_value = 
-								{
-									"status":status_V,
-									"count":0,
-									"mail_count":0,
-									"edit_date":strtoday,
-								};
-								return_data = {
-									"type":			"reset_url",
-									"token":		Cust_Account_Verify.reset_url,
-								};
-							}
-							set_result = await CustAccountRepository.set_Cust_Account(update_Account_value,conditions_update);
-							account_log=utility.createAccountLog("I",req.body.requester,strtoday,Cust_Account_Verify);
-							create_log_result= await CustAccountRepository.createCust_Account_Log(account_log);
-							if(set_result ===0 && create_log_result===0)
+							code_expired_date=new Date(Cust_Account_Verify.expire_date);
+							debug("Is today > code_expired_date?"+datenow+" "+code_expired_date);
+							if(datenow>code_expired_date)
 							{
-								throw(new Error("ERROR_WRONG_VERIFY_CODE"));
+								throw(new Error("ERROR_VERIFY_CODE_EXPIRED"));
 							}
 							else
 							{
-								if(req.body.data.type === "url")
-								{
-									let active_mail_result = await axios.post(mailapi,account_active_mail_json);
-									let active_mail_result_service = await axios.post(mailapi,account_active_mail_json_service);
-									if(active_mail_result ===0 && active_mail_result_service===0)
+								conditions_update = { "account":Cust_Account_Verify.account ,"sino_account":Cust_Account_Verify.sino_account};
+								//UPDATE the uniq user
+								let update_Account_value = {};
+								let return_data = {};
+								if(req.body.data.type === "url"){
+									Cust_Account_Verify.url="";
+									Cust_Account_Verify.reset_url=salt;
+									Cust_Account_Verify.count=0;
+									Cust_Account_Verify.mail_count=0;
+									Cust_Account_Verify.status=status_V;
+									update_Account_value = {
+										"url":"",
+										"status":status_V,
+										"reset_url":salt,
+										"count":0,
+										"mail_count":0,
+										"reset_url_expire":strnextdayTime,
+										"edit_date":strtoday,
+									};
+									return_data = {
+										"type":			"reset_url",
+										"token":		salt,
+									};
+									account_active_mail_json=mailjson.account_active_mail(Cust_Account_Verify.email,Cust_Account_Verify.account,"");
+									account_active_mail_json_service=mailjson.account_active_mail_service(mailjson.adminEmail(),Cust_Account_Verify.name,Cust_Account_Verify.account);
+								}else{
+									debug("reset_url : "+Cust_Account_Verify.reset_url);
+									Cust_Account_Verify.count=0;
+									Cust_Account_Verify.mail_count=0;
+									Cust_Account_Verify.status=status_V;
+									update_Account_value = 
 									{
-										throw(new Error("ERROR_ACCOUNT_EMAIL_INVALID"));
+										"status":status_V,
+										"count":0,
+										"mail_count":0,
+										"edit_date":strtoday,
+									};
+									return_data = {
+										"type":			"reset_url",
+										"token":		Cust_Account_Verify.reset_url,
+									};
+								}
+								set_result = await CustAccountRepository.set_Cust_Account(update_Account_value,conditions_update);
+								account_log=utility.createAccountLog("I",req.body.requester,strtoday,Cust_Account_Verify);
+								create_log_result= await CustAccountRepository.createCust_Account_Log(account_log);
+								if(set_result ===0 && create_log_result===0)
+								{
+									throw(new Error("ERROR_WRONG_VERIFY_CODE"));
+								}
+								else
+								{
+									if(req.body.data.type === "url")
+									{
+										await axios.post(cust_mailapi,account_active_mail_json).then(
+											function (res) 
+											{
+												let send_mail_result=res.data.toString().trim();
+												//if(send_mail_result=== "email error !")
+												if(send_mail_result!== "success !")
+												{
+													throw(new Error("ERROR_SEND_MAIL"));
+												}
+											});
+										await axios.post(service_mailapi,account_active_mail_json_service);
+										res.send({	
+											"code":	messageHandler.infoHandler("INFO_READ_VERIFY_CODE_SUCCESS"),
+											"data": return_data, 
+										});
 									}
 									else
 									{
@@ -1021,62 +1115,57 @@ module.exports.verify = async (req, res, next) =>
 										});
 									}
 								}
-								else
-								{
-									res.send({	
-										"code":	messageHandler.infoHandler("INFO_READ_VERIFY_CODE_SUCCESS"),
-										"data": return_data, 
-									});
-								}
 							}
 						}
-					}
-					catch(err)
-					{
-						throw(new Error("ERROR_URL_EXPIRED_FAIL"));
+						catch(err)
+						{
+							throw(new Error("ERROR_URL_EXPIRED_FAIL"));
+						}
 					}
 				}
-			}
-			else
-			{
-				for(INDEX=0;INDEX<Cust_Account.length;INDEX++)
+				else
 				{
-					if(Cust_Account[INDEX].count<3)
+					for(INDEX=0;INDEX<Cust_Account.length;INDEX++)
 					{
-						Cust_Account[INDEX].count=Cust_Account[INDEX].count+1;
-						let update_Cust_Account = 
+						if(Cust_Account[INDEX].count<3)
 						{
-							"mail_count":0,
-							"edit_date":strtoday,
-						};
-						conditions_update.account=Cust_Account[INDEX].account;
-						conditions_update.sino_account=Cust_Account[INDEX].sino_account;
-						update_Cust_Account.count=Cust_Account[INDEX].count;
-						await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_update);
-						account_log=utility.createAccountLog("I",req.body.requester,strtoday,Cust_Account[INDEX]);
-						await CustAccountRepository.createCust_Account_Log(account_log);
-						throw(new Error("ERROR_WRONG_VERIFY_CODE"));
-					}
-					else
-					{
-						Cust_Account[INDEX].verify_code="";
-						Cust_Account[INDEX].url="";
-						let update_Cust_Account = 
+							Cust_Account[INDEX].count=Cust_Account[INDEX].count+1;
+							let update_Cust_Account = 
+							{
+								"mail_count":0,
+								"edit_date":strtoday,
+							};
+							conditions_update.account=Cust_Account[INDEX].account;
+							conditions_update.sino_account=Cust_Account[INDEX].sino_account;
+							update_Cust_Account.count=Cust_Account[INDEX].count;
+							await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_update);
+							account_log=utility.createAccountLog("I",req.body.requester,strtoday,Cust_Account[INDEX]);
+							await CustAccountRepository.createCust_Account_Log(account_log);
+							throw(new Error("ERROR_WRONG_VERIFY_CODE"));
+						}
+						else
 						{
-							"url":"",
-							"reset_url":"",
-							"verify_code":"",
-							"edit_date":strtoday,
-						};
-						conditions_update.account=Cust_Account[INDEX].account;
-						conditions_update.sino_account=Cust_Account[INDEX].sino_account;
-						await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_update);
-						account_log=utility.createAccountLog("I",req.body.requester,strtoday,Cust_Account[INDEX]);
-						await CustAccountRepository.createCust_Account_Log(account_log);
-						throw(new Error("ERROR_VERIFY_CODE_INVALID"));
+							Cust_Account[INDEX].verify_code="";
+							Cust_Account[INDEX].url="";
+							let update_Cust_Account = 
+							{
+								"url":"",
+								"reset_url":"",
+								"verify_code":"",
+								"edit_date":strtoday,
+							};
+							conditions_update.account=Cust_Account[INDEX].account;
+							conditions_update.sino_account=Cust_Account[INDEX].sino_account;
+							await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_update);
+							account_log=utility.createAccountLog("I",req.body.requester,strtoday,Cust_Account[INDEX]);
+							await CustAccountRepository.createCust_Account_Log(account_log);
+							throw(new Error("ERROR_VERIFY_CODE_INVALID"));
+						}
 					}
 				}
 			}
+		}else{
+			throw(new Error("ERROR_BAD_REQUEST"));
 		}
 	}catch(err){
 		next(err);
@@ -1099,90 +1188,107 @@ module.exports.resetpassword = async (req, res, next) =>
 	const utility=require("../helper/Utility");
 	const mailjson=require("../helper/CustodianMail");
 	const axios = require("axios");
+	const crypto = require("crypto");
 	try{
 		// check parameters
 		if(!req.body.hasOwnProperty("data")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.hasOwnProperty("requester")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("account") || req.body.data.account === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
-		if(!req.body.data.hasOwnProperty("sinoaccount") || req.body.data.sinoaccount === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
+		if(!req.body.data.hasOwnProperty("sinoaccount")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("oldpassword") || req.body.data.oldpassword === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("newpassword") || req.body.data.newpassword === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
-		//prepare data
-		debug("account="+req.body.data.account+" "+req.body.data.sinoaccount+"old pass="+req.body.data.oldpassword+"new pass="+req.body.data.newpassword);
-		//prepare data
-		const mailapi = config[process.env.NODE_ENV].Cust_MailServer.policy + "://" + 
-						config[process.env.NODE_ENV].Cust_MailServer.host + ":" + config[process.env.NODE_ENV].Cust_MailServer.port+"/"+config[process.env.NODE_ENV].Cust_MailServer.api;
-		let strtodatetime=dateFormat.asString("yyyy/MM/dd hh:mm:ss", new Date());
-		let inputAccount=req.body.data.account;
-		let inputSinoAccount=req.body.data.sinoaccount;
-		let oldPass=req.body.data.oldpassword;
-		let newPass=req.body.data.newpassword;
-		let passwordsalt="";
-		let new_salt=utility.randomNumber(9999999999999999);
-		let condition_by_account = [{"key":"Cust_Account.account","value":inputAccount},{"key":"Cust_Account.sino_account","value":inputSinoAccount}];
-		let Cust_Account_without_password=await CustAccountRepository.getCust_Account_and_Custs(condition_by_account);
-		//get password salt
-		if(Cust_Account_without_password.length<1)
-		{
-			throw(new Error("ERROR_ACCOUNT_NOT_EXISTED"));
-		}
-		else
-		{
-			passwordsalt=Cust_Account_without_password[0].passwordsalt;
-			oldPass=utility.encryption(oldPass+passwordsalt);
-			debug("old pass="+oldPass);
-		}
-		let condition = [{"key":"Cust_Account.account","value":inputAccount},{"key":"Cust_Account.sino_account","value":inputSinoAccount},{"key":"Cust_Account.password","value":oldPass}];
-		let conditions_update = { "account":"" ,"sino_account":""};
-		//select by account
-		let Cust_Account=await CustAccountRepository.getCust_Account_and_Custs(condition);
-		let account_log;
-		let set_result;
-		let create_log_result;
-		if(Cust_Account.length<1)
-		{
-			throw(new Error("ERROR_ACCOUNT_NOT_EXISTED"));
-		}
-		else
-		{
-			if(typeof(newPass)!=undefined && newPass.length>5)
+		let isInputDataVaild = await utility.checkInputData(req.body.data);
+		if(isInputDataVaild){
+			if(req.body.data.account !== req.body.requester) throw (new Error("ERROR_UNAUTHORIZED"));
+			//prepare data
+			debug("account="+req.body.data.account+" "+req.body.data.sinoaccount+"old pass="+req.body.data.oldpassword+"new pass="+req.body.data.newpassword);
+			//prepare data
+			const mailapi = config[process.env.NODE_ENV].Cust_MailServer.policy + "://" + 
+							config[process.env.NODE_ENV].Cust_MailServer.host + ":" + config[process.env.NODE_ENV].Cust_MailServer.port+"/"+config[process.env.NODE_ENV].Cust_MailServer.api;
+			let strtodatetime=dateFormat.asString("yyyy/MM/dd hh:mm:ss", new Date());
+			let inputAccount=req.body.data.account;
+			let inputSinoAccount=req.body.data.sinoaccount;
+			let oldPass=req.body.data.oldpassword;
+			let newPass=req.body.data.newpassword;
+			let RandomPWSalt = crypto.randomBytes(16).toString("base64").substr(0, 16);
+			let passwordsalt=RandomPWSalt;
+			let new_salt=utility.randomNumber(9999999999999999);
+			let condition_by_account = [{"key":"Cust_Account.account","value":inputAccount},{"key":"Cust_Account.sino_account","value":inputSinoAccount}];
+			let Cust_Account_without_password=await CustAccountRepository.getCust_Account_and_Custs(condition_by_account);
+			//get password salt
+			if(Cust_Account_without_password.length<1)
 			{
-				Cust_Account[0].password=utility.encryption(newPass+new_salt);
-				debug("new pass="+Cust_Account[0].password);
-				Cust_Account[0].count=0;
-				let update_Cust_Account = 
-				{
-					"password":utility.encryption(newPass+new_salt),
-					"passwordsalt":new_salt,
-					"count":0,
-					"edit_date":strtodatetime,
-				};
-				conditions_update.account=inputAccount;
-				conditions_update.sino_account=inputSinoAccount;
-				set_result = await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_update);
-				account_log=utility.createAccountLog("I",req.body.requester,strtodatetime,Cust_Account[0]);
-				create_log_result= await CustAccountRepository.createCust_Account_Log(account_log);
-				if(set_result ===0 && create_log_result===0){
-					throw(new Error("ERROR_INTERNAL_SERVER_ERROR"));
-				}else{
-					let password_reset_mail_json=mailjson.password_reset_mail(Cust_Account[0].email,"");
-					let password_reset_mail_json_service=mailjson.password_reset_mail_service(mailjson.adminEmail(),Cust_Account[0].name,Cust_Account[0].account);
-					let active_mail_result = await axios.post(mailapi,password_reset_mail_json);
-					let active_mail_result_service = await axios.post(mailapi,password_reset_mail_json_service);
-					if(active_mail_result ===0 && active_mail_result_service===0){
-						throw(new Error("ERROR_ACCOUNT_EMAIL_INVALID"));
-					}else{
-						res.send({	
-							"code":	messageHandler.infoHandler("INFO_RESET_PASSWORD_SUCCESS"),
-							"data": [], 
-						});
-					}
-				}
+				throw(new Error("ERROR_ACCOUNT_NOT_EXISTED"));
 			}
 			else
 			{
-				throw(new Error("ERROR_PASSWORD_TOO_SHORT"));
+				passwordsalt=Cust_Account_without_password[0].passwordsalt;
+				oldPass=utility.encryption(oldPass+passwordsalt);
+				debug("old pass="+oldPass);
 			}
+			let condition = [{"key":"Cust_Account.account","value":inputAccount},{"key":"Cust_Account.sino_account","value":inputSinoAccount},{"key":"Cust_Account.password","value":oldPass}];
+			let conditions_update = { "account":"" ,"sino_account":""};
+			//select by account
+			let Cust_Account=await CustAccountRepository.getCust_Account_and_Custs(condition);
+			let account_log;
+			let set_result;
+			let create_log_result;
+			if(Cust_Account.length<1)
+			{
+				throw(new Error("ERROR_ACCOUNT_NOT_EXISTED"));
+			}
+			else
+			{
+				if(typeof(newPass)!=undefined && newPass.length>5)
+				{
+					Cust_Account[0].password=utility.encryption(newPass+new_salt);
+					debug("new pass="+Cust_Account[0].password);
+					Cust_Account[0].count=0;
+					let update_Cust_Account = 
+					{
+						"password":utility.encryption(newPass+new_salt),
+						"passwordsalt":new_salt,
+						"count":0,
+						"edit_date":strtodatetime,
+					};
+					conditions_update.account=inputAccount;
+					conditions_update.sino_account=inputSinoAccount;
+					set_result = await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_update);
+					account_log=utility.createAccountLog("I",req.body.requester,strtodatetime,Cust_Account[0]);
+					create_log_result= await CustAccountRepository.createCust_Account_Log(account_log);
+					if(set_result ===0 && create_log_result===0){
+						throw(new Error("ERROR_INTERNAL_SERVER_ERROR"));
+					}else{
+						let password_reset_mail_json=mailjson.password_reset_mail(Cust_Account[0].email,Cust_Account[0].account,"");
+						let password_reset_mail_json_service=mailjson.password_reset_mail_service(mailjson.adminEmail(),Cust_Account[0].name,Cust_Account[0].account);
+						let active_mail_result = await axios.post(mailapi,password_reset_mail_json).then(
+							function (res) 
+							{
+								let send_mail_result=res.data.toString().trim();
+								//if(send_mail_result=== "email error !")
+								if(send_mail_result!== "success !")
+								{
+									throw(new Error("ERROR_SEND_MAIL"));
+								}
+							});
+						let active_mail_result_service = await axios.post(mailapi,password_reset_mail_json_service);
+						if(active_mail_result ==="success !" && active_mail_result_service==="success !"){
+							throw(new Error("ERROR_ACCOUNT_EMAIL_INVALID"));
+						}else{
+							res.send({	
+								"code":	messageHandler.infoHandler("INFO_RESET_PASSWORD_SUCCESS"),
+								"data": [], 
+							});
+						}
+					}
+				}
+				else
+				{
+					throw(new Error("ERROR_PASSWORD_TOO_SHORT"));
+				}
+			}
+		}else{
+			throw(new Error("ERROR_BAD_REQUEST"));
 		}
 	}catch(err){
 		next(err);
@@ -1210,9 +1316,10 @@ module.exports.verifypassword = async (req, res, next) =>
 	try
 	{
 		//prepare data
-		//prepare data
-		const mailapi = config[process.env.NODE_ENV].Cust_MailServer.policy + "://" + 
+		const cust_mailapi = config[process.env.NODE_ENV].Cust_MailServer.policy + "://" + 
 						config[process.env.NODE_ENV].Cust_MailServer.host + ":" + config[process.env.NODE_ENV].Cust_MailServer.port+"/"+config[process.env.NODE_ENV].Cust_MailServer.api;
+		const service_mailapi = config[process.env.NODE_ENV].local_MailServer.policy + "://" + 
+						config[process.env.NODE_ENV].local_MailServer.host + ":" + config[process.env.NODE_ENV].local_MailServer.port+"/"+config[process.env.NODE_ENV].local_MailServer.api;
 		let datenow=new Date();
 		let strtodaytime=dateFormat.asString("yyyy/MM/dd hh:mm:ss", new Date());
 		let strtoday=dateFormat.asString("yyyy/MM/dd", new Date());
@@ -1231,197 +1338,211 @@ module.exports.verifypassword = async (req, res, next) =>
 		if(!req.body.data.hasOwnProperty("password") || req.body.data.password === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("verifycode") || req.body.data.verifycode === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("token") || req.body.data.token === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
-		inputPassword=req.body.data.password;
-		inputVerify=req.body.data.verifycode;
-		inputUserIP=req.body.requester;
-		let condition = [{"key":"reset_url","value":req.body.data.token}];
-		let condition_verify = [{"key":"reset_url","value":req.body.data.token},{"key":"verify_code","value":inputVerify}];
-		let conditions_update = { "account":"" ,"sino_account":"","reset_url":req.body.data.token};
-		let getCustPwd_conditions_ip=[{"key":"cust_ip","operator":"=","value":req.body.requester},{"key":"create_date","operator":">=","value":strtoday},{"key":"create_date","operator":"<","value":strNextday}];
-		let INDEX=0;
-		let create_reser_pwd_result;
-		let account_changepassword_mail_json;
-		let account_changepassword_mail_json_service;
-		//percheck
-		let query_byIp=await CustPwdResetRepository.getCustPwdReset(getCustPwd_conditions_ip);
-		let new_Reset_Pwd_Log = 
+		let isInputDataVaild = await utility.checkInputData(req.body.data);
+		if(isInputDataVaild){
+			inputPassword=req.body.data.password;
+			inputVerify=req.body.data.verifycode;
+			inputUserIP=req.body.requester;
+			let condition = [{"key":"reset_url","value":req.body.data.token}];
+			let condition_verify = [{"key":"reset_url","value":req.body.data.token},{"key":"verify_code","value":inputVerify}];
+			let conditions_update = { "account":"" ,"sino_account":"","reset_url":req.body.data.token};
+			let getCustPwd_conditions_ip=[{"key":"cust_ip","operator":"=","value":req.body.requester},{"key":"create_date","operator":">=","value":strtoday},{"key":"create_date","operator":"<","value":strNextday}];
+			let INDEX=0;
+			let create_reser_pwd_result;
+			let account_changepassword_mail_json;
+			let account_changepassword_mail_json_service;
+			//percheck
+			let query_byIp=await CustPwdResetRepository.getCustPwdReset(getCustPwd_conditions_ip);
+			let new_Reset_Pwd_Log = 
+				{
+					"account":"verifypassword",
+					"mail":"verifypassword",
+					"match":0,
+					"frequently":1,
+					"reset_url":req.body.data.token,
+					"cust_ip":inputUserIP,
+					"create_date":strtodaytime
+				};
+			if(query_byIp.length>=10)
 			{
-				"account":"verifypassword",
-				"mail":"verifypassword",
+				create_reser_pwd_result = await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log);
+				let malicious_mail_service_json=mailjson.malicious_mail_service(mailjson.adminEmail(),req.body.requester,req.body.data.token);
+				await axios.post(service_mailapi,malicious_mail_service_json);
+				throw(new Error("ERROR_TOO_FREQUENTLY"));
+			}
+			if(typeof(req.body.data.verifycode)==undefined || typeof(req.body.data.password)==undefined || typeof(req.body.data.token)==undefined)
+			{
+				create_reser_pwd_result = await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log);
+				throw(new Error("ERROR_INPUT_DATA"));
+			}
+			else if(inputPassword.length<5)
+			{
+				create_reser_pwd_result = await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log);
+				throw(new Error("ERROR_PASSWORD_TOO_SHORT"));
+			}
+			//select by url
+			let Cust_Account=await CustAccountRepository.getCust_Account_and_Custs(condition);
+			let Cust_Account_verify=await CustAccountRepository.getCust_Account_and_Custs(condition_verify);
+			if(Cust_Account.length<1)
+			{
+				create_reser_pwd_result = await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log);
+				throw(new Error("ERROR_ACCOUNT_NOT_EXISTED"));
+			}
+			if(Cust_Account_verify.length<1)
+			{
+				create_reser_pwd_result = await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log);
+				throw(new Error("ERROR_ACCOUNT_NOT_EXISTED"));
+			}
+			let account_log;
+			let set_result;
+			let create_log_result;
+			let new_Reset_Pwd_Log_with_account = 
+			{
+				"account":Cust_Account[0].account,
+				"mail":Cust_Account[0].email,
 				"match":0,
-				"frequently":1,
+				"frequently":0,
 				"reset_url":req.body.data.token,
 				"cust_ip":inputUserIP,
 				"create_date":strtodaytime
 			};
-		if(query_byIp.length>=10)
-		{
-			create_reser_pwd_result = await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log);
-			let malicious_mail_service_json=mailjson.malicious_mail_service(mailjson.adminEmail(),req.body.requester,req.body.data.token);
-			await axios.post(mailapi,malicious_mail_service_json);
-			throw(new Error("ERROR_TOO_FREQUENTLY"));
-		}
-		if(typeof(req.body.data.verifycode)==undefined || typeof(req.body.data.password)==undefined || typeof(req.body.data.token)==undefined)
-		{
-			create_reser_pwd_result = await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log);
-			throw(new Error("ERROR_INPUT_DATA"));
-		}
-		else if(inputPassword.length<5)
-		{
-			create_reser_pwd_result = await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log);
-			throw(new Error("ERROR_PASSWORD_TOO_SHORT"));
-		}
-		//select by url
-		let Cust_Account=await CustAccountRepository.getCust_Account_and_Custs(condition);
-		let Cust_Account_verify=await CustAccountRepository.getCust_Account_and_Custs(condition_verify);
-		if(Cust_Account.length<1)
-		{
-			create_reser_pwd_result = await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log);
-			throw(new Error("ERROR_ACCOUNT_NOT_EXISTED"));
-		}
-		if(Cust_Account_verify.length<1)
-		{
-			create_reser_pwd_result = await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log);
-			throw(new Error("ERROR_ACCOUNT_NOT_EXISTED"));
-		}
-		let account_log;
-		let set_result;
-		let create_log_result;
-		let new_Reset_Pwd_Log_with_account = 
-		{
-			"account":Cust_Account[0].account,
-			"mail":Cust_Account[0].email,
-			"match":0,
-			"frequently":0,
-			"reset_url":req.body.data.token,
-			"cust_ip":inputUserIP,
-			"create_date":strtodaytime
-		};
-		let new_Reset_Pwd_Log_with_verify = 
-		{
-			"account":Cust_Account_verify[0].account,
-			"mail":Cust_Account_verify[0].email,
-			"match":0,
-			"frequently":0,
-			"reset_url":req.body.data.token,
-			"cust_ip":inputUserIP,
-			"create_date":strtodaytime
-		};
-		if(Cust_Account.length<1)
-		{
-			create_reser_pwd_result = await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log);
-			throw(new Error("ERROR_URL_NOT_FOUND"));
-		}
-		else if(Cust_Account_verify.length!=Cust_Account.length)
-		{
-			create_reser_pwd_result = await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log_with_account);
-			for(INDEX=0;INDEX<Cust_Account.length;INDEX++)
+			let new_Reset_Pwd_Log_with_verify = 
 			{
-				Cust_Account[INDEX].mail_count=Cust_Account[INDEX].mail_count+1;
-				Cust_Account[INDEX].edit_date=strtoday;
-				let update_Cust_Account = 
-				{
-					"mail_count":Cust_Account[INDEX].mail_count,
-					"edit_date":strtodaytime,
-				};
-				conditions_update.account=Cust_Account[INDEX].account;
-				conditions_update.sino_account=Cust_Account[INDEX].sino_account;
-				set_result = await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_update);
-				account_log=utility.createAccountLog("I",req.body.requester,strtodaytime,Cust_Account[INDEX]);
-				create_log_result= await CustAccountRepository.createCust_Account_Log(account_log);
-				throw(new Error("ERROR_WRONG_VERIFY_CODE"));
+				"account":Cust_Account_verify[0].account,
+				"mail":Cust_Account_verify[0].email,
+				"match":0,
+				"frequently":0,
+				"reset_url":req.body.data.token,
+				"cust_ip":inputUserIP,
+				"create_date":strtodaytime
+			};
+			if(Cust_Account.length<1)
+			{
+				create_reser_pwd_result = await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log);
+				throw(new Error("ERROR_URL_NOT_FOUND"));
 			}
-		}
-		else
-		{
-			if(Cust_Account_verify[0].status!=status_V && Cust_Account_verify[0].status!=status_U) 
+			else if(Cust_Account_verify.length!=Cust_Account.length)
 			{
-				create_reser_pwd_result = await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log_with_verify);
-				Cust_Account[0].mail_count=Cust_Account[0].mail_count+1;
-				Cust_Account[0].edit_date=strtodaytime;
-				let update_Cust_Account = 
+				create_reser_pwd_result = await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log_with_account);
+				for(INDEX=0;INDEX<Cust_Account.length;INDEX++)
 				{
-					"mail_count":Cust_Account[0].mail_count,
-					"edit_date":strtodaytime,
-				};
-				conditions_update.account=Cust_Account[0].account;
-				conditions_update.sino_account=Cust_Account[0].sino_account;
-				set_result = await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_update);
-				account_log=utility.createAccountLog("I",req.body.requester,strtodaytime,Cust_Account[0]);
-				create_log_result= await CustAccountRepository.createCust_Account_Log(account_log);
-				throw(new Error("ERROR_ACCOUNT_STATUS_V"));
-			}
-			else if(Cust_Account_verify[0].mail_count>2)
-			{
-				create_reser_pwd_result = await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log_with_verify);
-				Cust_Account_verify[0].verify_code="";
-				Cust_Account_verify[0].reset_url="";
-				Cust_Account_verify[0].edit_date=strtodaytime;
-				let update_Cust_Account = 
-				{
-					"reset_url":"",
-					"url":"",
-					"verify_code":"",
-					"edit_date":strtodaytime,
-					"mail_count":0,
-				};
-				conditions_update.account=Cust_Account_verify[0].account;
-				conditions_update.sino_account=Cust_Account_verify[0].sino_account;
-				set_result = await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_update);
-				account_log=utility.createAccountLog("I",req.body.requester,strtodaytime,Cust_Account_verify[0]);
-				create_log_result= await CustAccountRepository.createCust_Account_Log(account_log);
-				throw(new Error("ERROR_VERIFY_CODE_INVALID"));
-			}
-			else if(Cust_Account_verify[0].reset_url_expire<strtodaytime)
-			{
-				create_reser_pwd_result = await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log_with_verify);
-				throw(new Error("ERROR_VERIFY_CODE_EXPIRED"));
+					Cust_Account[INDEX].mail_count=Cust_Account[INDEX].mail_count+1;
+					Cust_Account[INDEX].edit_date=strtoday;
+					let update_Cust_Account = 
+					{
+						"mail_count":Cust_Account[INDEX].mail_count,
+						"edit_date":strtodaytime,
+					};
+					conditions_update.account=Cust_Account[INDEX].account;
+					conditions_update.sino_account=Cust_Account[INDEX].sino_account;
+					set_result = await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_update);
+					account_log=utility.createAccountLog("I",req.body.requester,strtodaytime,Cust_Account[INDEX]);
+					create_log_result= await CustAccountRepository.createCust_Account_Log(account_log);
+					throw(new Error("ERROR_WRONG_VERIFY_CODE"));
+				}
 			}
 			else
 			{
-				inputPassword=utility.encryption(inputPassword+passwordsalt);
-				create_reser_pwd_result = await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log_with_verify);
-				debug(inputPassword);
-				Cust_Account_verify[0].mail_count=0;
-				Cust_Account_verify[0].status=status_A;
-				Cust_Account_verify[0].edit_date=strtodaytime;
-				Cust_Account_verify[0].password=inputPassword;
-				Cust_Account_verify[0].passwordsalt=passwordsalt;
-				Cust_Account_verify[0].reset_url="";
-				Cust_Account_verify[0].verify_code="";
-				Cust_Account_verify[0].count=0;
-				let update_Cust_Account = 
+				if(Cust_Account_verify[0].status!=status_V && Cust_Account_verify[0].status!=status_U) 
 				{
-					"count":0,
-					"url":"",
-					"reset_url":"",
-					"verify_code":"",
-					"password":inputPassword,
-					"passwordsalt":passwordsalt,
-					"status":status_A,
-					"mail_count":0,
-					"edit_date":strtodaytime,
-				};
-				conditions_update.account=Cust_Account_verify[0].account;
-				conditions_update.sino_account=Cust_Account_verify[0].sino_account;
-				set_result = await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_update);
-				account_log=utility.createAccountLog("I",req.body.requester,strtodaytime,Cust_Account_verify[0]);
-				create_log_result= await CustAccountRepository.createCust_Account_Log(account_log);
-				
-				account_changepassword_mail_json=mailjson.password_reset_mail(Cust_Account_verify[0].email,"");
-				account_changepassword_mail_json_service=mailjson.password_reset_mail_service(mailjson.adminEmail(),Cust_Account_verify[0].name,Cust_Account_verify[0].account);
-				let changepassword_result = await axios.post(mailapi,account_changepassword_mail_json);
-				let changepassword_result_service = await axios.post(mailapi,account_changepassword_mail_json_service);
-				if(set_result ===0 && create_log_result===0 && create_reser_pwd_result===0 && changepassword_result===0 && changepassword_result_service===0)
+					create_reser_pwd_result = await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log_with_verify);
+					Cust_Account[0].mail_count=Cust_Account[0].mail_count+1;
+					Cust_Account[0].edit_date=strtodaytime;
+					let update_Cust_Account = 
+					{
+						"mail_count":Cust_Account[0].mail_count,
+						"edit_date":strtodaytime,
+					};
+					conditions_update.account=Cust_Account[0].account;
+					conditions_update.sino_account=Cust_Account[0].sino_account;
+					set_result = await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_update);
+					account_log=utility.createAccountLog("I",req.body.requester,strtodaytime,Cust_Account[0]);
+					create_log_result= await CustAccountRepository.createCust_Account_Log(account_log);
+					throw(new Error("ERROR_ACCOUNT_STATUS_V"));
+				}
+				else if(Cust_Account_verify[0].mail_count>2)
 				{
-					throw(new Error("ERROR_INTERNAL_SERVER_ERROR"));
-				}else{
-					res.send({	
-						"code":	messageHandler.infoHandler("INFO_RESET_PASSWORD_SUCCESS"),
-						"data": [], 
-					});
+					create_reser_pwd_result = await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log_with_verify);
+					Cust_Account_verify[0].verify_code="";
+					Cust_Account_verify[0].reset_url="";
+					Cust_Account_verify[0].edit_date=strtodaytime;
+					let update_Cust_Account = 
+					{
+						"reset_url":"",
+						"url":"",
+						"verify_code":"",
+						"edit_date":strtodaytime,
+						"mail_count":0,
+					};
+					conditions_update.account=Cust_Account_verify[0].account;
+					conditions_update.sino_account=Cust_Account_verify[0].sino_account;
+					set_result = await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_update);
+					account_log=utility.createAccountLog("I",req.body.requester,strtodaytime,Cust_Account_verify[0]);
+					create_log_result= await CustAccountRepository.createCust_Account_Log(account_log);
+					throw(new Error("ERROR_VERIFY_CODE_INVALID"));
+				}
+				else if(Cust_Account_verify[0].reset_url_expire<strtodaytime)
+				{
+					create_reser_pwd_result = await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log_with_verify);
+					throw(new Error("ERROR_VERIFY_CODE_EXPIRED"));
+				}
+				else
+				{
+					inputPassword=utility.encryption(inputPassword+passwordsalt);
+					create_reser_pwd_result = await CustPwdResetRepository.createCustPwdReset(new_Reset_Pwd_Log_with_verify);
+					debug(inputPassword);
+					Cust_Account_verify[0].mail_count=0;
+					Cust_Account_verify[0].status=status_A;
+					Cust_Account_verify[0].edit_date=strtodaytime;
+					Cust_Account_verify[0].password=inputPassword;
+					Cust_Account_verify[0].passwordsalt=passwordsalt;
+					Cust_Account_verify[0].reset_url="";
+					Cust_Account_verify[0].verify_code="";
+					Cust_Account_verify[0].count=0;
+					let update_Cust_Account = 
+					{
+						"count":0,
+						"url":"",
+						"reset_url":"",
+						"verify_code":"",
+						"password":inputPassword,
+						"passwordsalt":passwordsalt,
+						"status":status_A,
+						"mail_count":0,
+						"edit_date":strtodaytime,
+					};
+					conditions_update.account=Cust_Account_verify[0].account;
+					conditions_update.sino_account=Cust_Account_verify[0].sino_account;
+					set_result = await CustAccountRepository.set_Cust_Account(update_Cust_Account,conditions_update);
+					account_log=utility.createAccountLog("I",req.body.requester,strtodaytime,Cust_Account_verify[0]);
+					create_log_result= await CustAccountRepository.createCust_Account_Log(account_log);
+					
+					account_changepassword_mail_json=mailjson.password_reset_mail(Cust_Account_verify[0].email,Cust_Account_verify[0].account,"");
+					account_changepassword_mail_json_service=mailjson.password_reset_mail_service(mailjson.adminEmail(),Cust_Account_verify[0].name,Cust_Account_verify[0].account);
+					await axios.post(cust_mailapi,account_changepassword_mail_json).then(
+						function (res) 
+						{
+							let send_mail_result=res.data.toString().trim();
+							//if(send_mail_result=== "email error !")
+							if(send_mail_result!== "success !")
+							{
+								throw(new Error("ERROR_SEND_MAIL"));
+							}
+						});
+					await axios.post(service_mailapi,account_changepassword_mail_json_service);
+					if(set_result ===0 && create_log_result===0 && create_reser_pwd_result===0)
+					{
+						throw(new Error("ERROR_INTERNAL_SERVER_ERROR"));
+					}else{
+						res.send({	
+							"code":	messageHandler.infoHandler("INFO_RESET_PASSWORD_SUCCESS"),
+							"data": [], 
+						});
+					}
 				}
 			}
+		}else{
+			throw(new Error("ERROR_BAD_REQUEST"));
 		}
 	}catch(err){
 		next(err);

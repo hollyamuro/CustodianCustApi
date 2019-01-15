@@ -1,3 +1,11 @@
+/**
+ * batch主程式
+ * @module batchs/BatchMain
+ */
+
+/**
+ * batch主程式
+ */
 module.exports = () => {
 	try {
     

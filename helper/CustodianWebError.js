@@ -8,11 +8,12 @@
 
 /* Basic error format */
 class CustodianWebError extends Error {
-	constructor(message, type, status) {
+	constructor(message, type,title, status) {
 		super(message);
                 
 		this.name = this.constructor.name;
 		this.type = type;
+		this.title = title;
 		this.status = status;
 
 		Error.captureStackTrace(this, this.constructor);
@@ -21,12 +22,12 @@ class CustodianWebError extends Error {
 
 module.exports.NotFoundError = class extends CustodianWebError {
 	constructor(message) {
-		super(message || "ERROR_NOT_FOUND", "ERROR", 404);
+		super(message || "ERROR_NOT_FOUND", "ERROR","System Message", 404);
 	}
 };
 
 module.exports.InternalServerError = class extends CustodianWebError {
 	constructor(message) {
-		super(message || "ERROR_INTERNAL_SERVER_ERROR", "ERROR", 500);
+		super(message || "ERROR_INTERNAL_SERVER_ERROR", "ERROR","System Message", 500);
 	}
 };

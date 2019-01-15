@@ -39,15 +39,6 @@ module.exports.foreverCheck = function() {
 	const monitorConfig = require("../MonitorConfig");
 	const axios = require("axios");
 
-	let policy = (config[process.env.NODE_ENV].policy === "http") ? require("http") : require("https");
-   
-	const axiosRequest = axios.create({
-		httpsAgent: new policy.Agent({
-			//[TODO: need fix this issue in the future]
-			rejectUnauthorized: false
-		})
-	});
-
 	forever.list("", function(err, results) {
 		let server_path =   config[process.env.NODE_ENV].IntegratedProxyService_api.policy + "://" + 
                             config[process.env.NODE_ENV].IntegratedProxyService_api.host + ":" + 
@@ -55,6 +46,16 @@ module.exports.foreverCheck = function() {
 
 		let mail_api_path = "/api/mail_controller/send";
 		if (results === "{}" || results === "undefined" || results === null) {
+			let restart_content = "CustodianApi is statred.";
+			axios.post(server_path + mail_api_path, {
+				receivers: monitorConfig[process.env.NODE_ENV].developers.mail,
+				subject: "CustodianApi is statred.",
+				content: restart_content,
+			}).then(function(response) {
+					// debug(response);
+			}).catch(function(error) {
+					debug(error);
+			});
 			debug("No Forever processing.");
 			return;
 		} 
@@ -64,19 +65,18 @@ module.exports.foreverCheck = function() {
 				if(element.id === "CustodianApi"){
 					debug(element.restarts);
 					let restart_content = "Forever restart CustodianApi script for " + element.restarts + " time. ";
-					if (element.restarts > 0) {
-						axiosRequest.post(server_path + mail_api_path, {
+					if (element.restarts >= 0) {
+						axios.post(server_path + mail_api_path, {
 							receivers: monitorConfig[process.env.NODE_ENV].developers.mail,
 							subject: "System is restarted with code. ",
 							content: restart_content,
-						})
-							.then(function(response) {
-								// debug(response);
-							})
-							.catch(function(error) {
-								// debug(error);
-							});
-						debug("Forever restart CustodianApi script for " + element.restarts + " time");
+						}).then(function(response) {
+							// debug(response);
+							debug("Forever restart CustodianApi script for " + element.restarts + " time");
+						}).catch(function(error) {
+							debug(error);
+						});
+						
 					}
 				}
 			});

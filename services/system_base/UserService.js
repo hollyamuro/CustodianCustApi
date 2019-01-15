@@ -46,43 +46,45 @@ module.exports.insertUser = async (req, res, next) => {
 
 	try
 	{
-		const uuidV1 = require("uuid/v1");
-		const cryptoJS = require("crypto-js");
+		const bcrypt = require("bcryptjs");
 		const messageHandler = require("../../helper/MessageHandler");
 		const userRepository = require("../../repositories/system_base/UserRepository");
+		const utility = require("../../helper/Utility");
 
 		// check parameters
 		if(!req.body.hasOwnProperty("data")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("employee_id") || req.body.data.employee_id === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
-        
-		//check user existed
-		const isExisted = await userRepository.isUsersExisted({"Employee_Id" : req.body.data.employee_id});
-		if(isExisted === true) throw(new Error("ERROR_DUPLICATE_DATA"));
+        let isInputDataVaild = await utility.checkInputData(req.body.data);
+		if(isInputDataVaild){
+			//check user existed
+			const isExisted = await userRepository.isUsersExisted({"Employee_Id" : req.body.data.employee_id});
+			if(isExisted === true) throw(new Error("ERROR_DUPLICATE_DATA"));
 
-		//hash id
-		let idSalt = uuidV1(); 
-		let hashId = cryptoJS.SHA1(cryptoJS.MD5(req.body.data.employee_id) + idSalt);
-		
-		//pwd
-		let pwdSalt = uuidV1(); 
-		let hashPwd = cryptoJS.SHA1(cryptoJS.MD5(req.body.data.employee_id) + pwdSalt);
+			//hash id
+			const HASHID = await bcrypt.hash(req.body.data.employee_id, 10);
 
-		//insert user
-		await userRepository.createUser({
-			"Employee_Id": 		req.body.data.employee_id.toString(),
-			"IdSalt":			idSalt.toString(),
-			"IdHash":			hashId.toString(),
-			"Pwd": 				hashPwd.toString(),
-			"PwdSalt": 			pwdSalt.toString(),
-			"AccountStatus": 	1,
-			"ErrorCounts": 		0,
-			"IsBlock": 			0,
-		});
-		
-		res.send({ 	
-			"code": messageHandler.infoHandler("INFO_CREATE_DATA_SUCCESS"), 
-			"data": [], 
-		});
+			//pwd
+			const HASHPWD = await bcrypt.hash(req.body.data.employee_id, 10);
+	
+			//insert user
+			await userRepository.createUser({
+				"Employee_Id": 		req.body.data.employee_id.toString(),
+				"IdSalt":			HASHID,
+				"IdHash":			HASHID,
+				"Pwd": 				HASHPWD,
+				"PwdSalt": 			HASHPWD,
+				"AccountStatus": 	1,
+				"ErrorCounts": 		0,
+				"IsBlock": 			0,
+			});
+			
+			res.send({ 	
+				"code": messageHandler.infoHandler("INFO_CREATE_DATA_SUCCESS"), 
+				"data": [], 
+			});
+		}else{
+			throw(new Error("ERROR_BAD_REQUEST"));
+		}
 	}
 	catch(err){ next(err); }
 };
@@ -100,22 +102,27 @@ module.exports.deleteUser = async (req, res, next) => {
 	{
 		const messageHandler = require("../../helper/MessageHandler");
 		const userRepository = require("../../repositories/system_base/UserRepository");
+		const utility = require("../../helper/Utility");
 
 		// check parameters
 		if(!req.body.hasOwnProperty("data")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("employee_id")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
-        
-		// check user existed
-		const isExisted = await userRepository.isUsersExisted({"Employee_Id" : req.body.data.employee_id});
-		if(isExisted === false) throw(new Error("ERROR_NOT_EXISTED_DATA"));
+        let isInputDataVaild = await utility.checkInputData(req.body.data);
+		if(isInputDataVaild){
+			// check user existed
+			const isExisted = await userRepository.isUsersExisted({"Employee_Id" : req.body.data.employee_id});
+			if(isExisted === false) throw(new Error("ERROR_NOT_EXISTED_DATA"));
 
-		// delete user
-		await userRepository.destroyUser({"Employee_Id" : req.body.data.employee_id});
+			// delete user
+			await userRepository.destroyUser({"Employee_Id" : req.body.data.employee_id});
 
-		res.send({ 	
-			"code": messageHandler.infoHandler("INFO_DELETE_DATA_SUCCESS"), 
-			"data": [], 
-		});
+			res.send({ 	
+				"code": messageHandler.infoHandler("INFO_DELETE_DATA_SUCCESS"), 
+				"data": [], 
+			});
+		}else{
+			throw(new Error("ERROR_BAD_REQUEST"));
+		}
 	}
 	catch(err){ next(err); }
 };
@@ -131,6 +138,7 @@ module.exports.login =  async (req, res, next) => {
 		const axios = require("axios");
 		const messageHandler = require("../../helper/MessageHandler");
 		const userRepository = require("../../repositories/system_base/UserRepository");
+		const utility = require("../../helper/Utility");
 		const debug = require("debug")("CustodianApi:UserService.login");
 		const config = require("../../Config");
 		
@@ -153,57 +161,61 @@ module.exports.login =  async (req, res, next) => {
 		if(!req.body.hasOwnProperty("data")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("account") || req.body.data.account === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("password") || req.body.data.password === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
-		
-		// check user is existed
-		const isUsersExisted = await userRepository.isUsersExisted({"Employee_Id": req.body.data.account, });
-		if(isUsersExisted === false) throw(new Error("ERROR_NOT_EXISTED_USER"));
+		let isInputDataVaild = await utility.checkInputData(req.body.data);
+		if(isInputDataVaild){
+			// check user is existed
+			const isUsersExisted = await userRepository.isUsersExisted({"Employee_Id": req.body.data.account, });
+			if(isUsersExisted === false) throw(new Error("ERROR_NOT_EXISTED_USER"));
 
-		// validate password
-		// const isPass = await userRepository.validateLocalPassword(req.body.data.account, req.body.data.password );
-		// if(isPass === false ) throw(new Error("ERROR_WRONG_ACCOUNT_OR_PASSWORD"));
+			// validate password
+			// const isPass = await userRepository.validateLocalPassword(req.body.data.account, req.body.data.password );
+			// if(isPass === false ) throw(new Error("ERROR_WRONG_ACCOUNT_OR_PASSWORD"));
 
-		// validate ad
-		const isAdPass = await userRepository.validateAD(req.body.data.account, req.body.data.password);
-		if(isAdPass === false ) throw(new Error("ERROR_WRONG_ACCOUNT_OR_PASSWORD"));
+			// validate ad
+			const isAdPass = await userRepository.validateAD(req.body.data.account, req.body.data.password);
+			if(isAdPass === false ) throw(new Error("ERROR_WRONG_ACCOUNT_OR_PASSWORD"));
 
-		// get user data
-		const userProfile = await userRepository.getUsersProfile({ "Employee_Id": req.body.data.account });
-		
-		// get permission
-		const permission = await userRepository.getPermissionsOfUser(req.body.data.account);
+			// get user data
+			const userProfile = await userRepository.getUsersProfile({ "Employee_Id": req.body.data.account });
+			
+			// get permission
+			const permission = await userRepository.getPermissionsOfUser(req.body.data.account);
 
-		// get role
-		const roles = await userRepository.getRolesOfUser(req.body.data.account);
+			// get role
+			const roles = await userRepository.getRolesOfUser(req.body.data.account);
 
-		// get product
-		const products = await userRepository.getProductsOfUser(req.body.data.account);
+			// get product
+			const products = await userRepository.getProductsOfUser(req.body.data.account);
 
-		// set return value
-		return_prototype = {
-			"user":  			userProfile[0].u_hid, 
-			"user_name":   		userProfile[0].e_user_name, 
-			"dept": 			userProfile[0].d_dept_id, 
-			"dept_name": 		userProfile[0].d_dept_name, 
-			"permission_list": 	permission,
-			"product_list":		products,
-			"role_list":		roles,
-			"system":			"CustodianWeb",
-		};
+			// set return value
+			return_prototype = {
+				"user":  			userProfile[0].u_hid, 
+				"user_name":   		userProfile[0].e_user_name, 
+				"dept": 			userProfile[0].d_dept_id, 
+				"dept_name": 		userProfile[0].d_dept_name, 
+				"permission_list": 	permission,
+				"product_list":		products,
+				"role_list":		roles,
+				"system":			"CustodianWeb",
+			};
 
-		jwt_sign_prototype = {
-			"user":  			userProfile[0].u_hid, 
-		};
-		
-		const local = config[process.env.NODE_ENV].JwtService_api.policy + "://" + config[process.env.NODE_ENV].JwtService_api.host + ":" + config[process.env.NODE_ENV].JwtService_api.port;
-		//get token
-		const token = await axios.post(local + "/api/sign", { "data": jwt_sign_prototype, "system": "CustodianWeb",});
-		debug(token.data.data);
-		return_prototype["access_token"] = token.data.data;
+			jwt_sign_prototype = {
+				"user":  			userProfile[0].u_hid, 
+			};
+			
+			const local = config[process.env.NODE_ENV].JwtService_api.policy + "://" + config[process.env.NODE_ENV].JwtService_api.host + ":" + config[process.env.NODE_ENV].JwtService_api.port;
+			//get token
+			const token = await axios.post(local + "/api/sign", { "data": jwt_sign_prototype, "system": "CustodianWeb",});
+			debug(token.data.data);
+			return_prototype["access_token"] = token.data.data;
 
-		res.send({  
-			"code" : messageHandler.infoHandler("INFO_LOGIN_SUCCESS"), 
-			"data": return_prototype,
-		});
+			res.send({  
+				"code" : messageHandler.infoHandler("INFO_LOGIN_SUCCESS"), 
+				"data": return_prototype,
+			});
+		}else{
+			throw(new Error("ERROR_BAD_REQUEST"));
+		}
 	}
 	catch(err){ 
 		next(err); 
@@ -226,6 +238,8 @@ module.exports.verify =  async (req, res, next) => {
 		const userRepository = require("../../repositories/system_base/UserRepository");
 
 		if(!req.body.hasOwnProperty("data")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
+		if(!req.body.hasOwnProperty("requester")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
+		if(!req.body.hasOwnProperty("token")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		
 		let return_prototype = {	
 			"user":  			"", 
@@ -243,7 +257,7 @@ module.exports.verify =  async (req, res, next) => {
 		};
 
 		const local = config[process.env.NODE_ENV].JwtService_api.policy + "://" + config[process.env.NODE_ENV].JwtService_api.host + ":" + config[process.env.NODE_ENV].JwtService_api.port;
-		const jwt_user_data = await axios.post(local + "/api/verify", { "token": req.body.data.token, "system": "CustodianWeb",});
+		const jwt_user_data = await axios.post(local + "/api/verify", { "token": req.body.token, "system": "CustodianWeb",});
 
 		if(jwt_user_data.data.login){
 			const EmployeeId = await userRepository.getEmployeeId(jwt_user_data.data.user);

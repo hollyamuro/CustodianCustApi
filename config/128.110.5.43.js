@@ -6,13 +6,11 @@
 "use strict";
 
 module.exports = {
-
 	production: {},
-	development: {},
-	debug: {
-		version: "0.0.0",
-		policy: "http",
-		nginx_port: 3001,
+	development: {
+		version: "1.0.0",
+		policy: "https",
+		nginx_port: 3051,
 		port: 3001,
 
 		/* Database setting */
@@ -41,14 +39,14 @@ module.exports = {
 			},
 		},
 		IntegratedProxyService_api: {
-			host: "localhost",
-			port: "8008",
-			policy: "http",
+			host: "128.110.5.43",
+			port: "8018",
+			policy: "https",
 		},
 		JwtService_api: {
-			host: "localhost",
-			port: "8086",
-			policy: "http",
+			host: "128.110.5.43",
+			port: "8016",
+			policy: "https",
 		},
 		CustodianBackend: {
 			//固收主機
@@ -57,23 +55,27 @@ module.exports = {
 			policy: "http",
 		},
 		CustodianCustWeb: {
-			host: "localhost",    //for local dev
-			port: "8084",
-			policy: "http",
+			domain:"custody-test.sec",
+			host: "218.32.237.86",
+			port: "8086",
+			policy: "https",
 		},
 		Cust_MailServer: {
 			//對外mail server
-			host: "localhost",
-			port: "8008",
-			policy: "http",
-			api: "api/mail_controller/send/",
+			from:"SinoPac Securities Custody Service <custodian_service@sinopac.com>",
+			host: "128.110.5.43",
+			port: "8018",
+			policy: "https",
+			api: "api/mail_controller/external_send",
 		},
 		local_MailServer: {
-			//對內mail server
-			host: "localhost",
-			port: "8008",
-			policy: "http",
+		    //對內mail server
+			from:"SinoPac Securities Custody Service <custodian_service@sinopac.com>",
+			host: "128.110.5.43",
+			port: "8018",
+			policy: "https",
 			api: "api/mail_controller/send",
 		}
 	},
+	debug: {},
 };

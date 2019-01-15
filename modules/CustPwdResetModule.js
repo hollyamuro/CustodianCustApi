@@ -1,6 +1,6 @@
 /**
  * Cust_Pwd_Reset模組
- * @module modules/CustPwdResetModule.js
+ * @module modules/CustPwdResetModule
  */
  
 "use strict";

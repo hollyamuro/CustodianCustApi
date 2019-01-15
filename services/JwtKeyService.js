@@ -1,16 +1,16 @@
 /**
- * Custs 相關之商業邏輯
- * @module services/CustService
+ * 更新JWT key相關之邏輯
+ * @module services/JwtKeyService
  */
 
 "use strict";
 
 /**
- * 查詢客戶
+ * 更新 JWT key
  * @param  {} req
  * @param  {} res
  * @param  {} next
- * @see /api/staff/custs/read
+ * @see /api/cust/jwt_key_create
  */
 module.exports.updateJwtKey = async (req, res, next) => {
 

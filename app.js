@@ -14,28 +14,24 @@ const packageHandler = () => {
 	const express = require("express");
 	const path = require("path");
 	const bodyParser = require("body-parser");
+	let helmet = require("helmet");
 
 	let app = express();
 
 	/* setup morgan for log*/
-	const fs = require("fs");
-	const format = require("date-format");
-	let accessLogStream = fs.createWriteStream(path.resolve(__dirname, "log/log_"+ format("yyyy-MM-dd",new Date()) +".log"), {flags: "a+"});
+	const fileStreamRotator = require("file-stream-rotator");
 	const morgan = require("morgan");
-	morgan.token("req-body", function (req) { return (req.url === "/api/staff/users/login")?"":JSON.stringify(req.body); });
-	app.use(morgan(		":remote-addr - :remote-user [:date[clf]] \":method :url HTTP/:http-version\" :status :res[content-length] \":referrer\" \":user-agent\" :req-body",
-		{	stream: accessLogStream,
-			skip: (req, res) => {
-				let monitorConfig = require("./MonitorConfig");
-				//ignore ip
-				for(let i=0; i < monitorConfig[process.env.NODE_ENV].developers.ip.length; i++){
-					let expression = new RegExp(monitorConfig[process.env.NODE_ENV].developers.ip[i]);
-					return (expression.exec(req.connection.remoteAddress) === null)?false:true;
-				}
-				//[TODO]ignore it account?
-				return false;
-			}
-		}));
+	let accessLogStream = fileStreamRotator.getStream({
+		filename: "log/log-%DATE%.log",
+		frequency: "daily",
+		verbose: false
+	});
+	morgan.token("req-body", function (req) { 
+		return (req.url === "/api/staff/users/login" || req.url === "/api/cust/login" ) ? "" : JSON.stringify(req.body); 
+	});
+	app.use(morgan(":remote-addr - :remote-user [:date[clf]] \":method :url HTTP/:http-version\" :status :res[content-length] \":referrer\" \":user-agent\" :req-body",
+		{ stream: accessLogStream, })
+	);
 
 	app.use(bodyParser.json());
 	app.use(bodyParser.urlencoded({ extended: false }));
@@ -43,14 +39,31 @@ const packageHandler = () => {
 	/* Check Input Data */
 	// app.use(require(path.resolve(__dirname,"./helper/CheckInput")));
 
+	/* setup helmet */
+	app.use(helmet());
+	app.use(helmet.contentSecurityPolicy({
+		directives: {
+			defaultSrc:		["'self'"],
+			scriptSrc:		["'self'"],
+			styleSrc:		["'self'"],
+			imgSrc:			["'self'"],
+			frameSrc:		["'self'"],
+			fontSrc:		["'self'"],
+		}
+	}));
+	app.use(helmet.frameguard({ action: 'deny' }));
+
+	/* JWT check */
+	app.use(require(path.resolve(__dirname,"./helper/JwtCheck")));
+
 	/* setting api routers */
 	require("./routes/ServiceRoute")(app);
 	require("./routes/CustRoute")(app);
-	require("./routes/StaffRoute.")(app);
+	require("./routes/StaffRoute")(app);
 
 	// catch 404 and forward to error handler
 	app.use((req, res, next) => {
-		const error =  require("./helper/CustodianWebError");
+		const error = require("./helper/CustodianWebError");
 		next(new error.NotFoundError());
 	});
 
@@ -58,10 +71,10 @@ const packageHandler = () => {
 	app.use((err, req, res, next) => {
 		const debug = require("debug")("CustodianApi:app");
 		const messageHandler = require("./helper/MessageHandler");
-		debug((process.env.NODE_ENV === "development")?err.stack:"");
+		debug((process.env.NODE_ENV !== "production") ? err.stack : "");
 
 		// res.status(err.status || 500);
-		res.send({ "code" : messageHandler.errorHandler(err), "data" : "" ,});
+		res.send({ "code": messageHandler.errorHandler(err), "data": "", });
 	});
 
 	return app;

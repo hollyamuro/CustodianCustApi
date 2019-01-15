@@ -209,7 +209,7 @@ module.exports.createCust_Account_Log = (CustAccountModule) => {
 
 /**
  * 產生CustAccount串接Custs欄位的Table
- * @param  [Object] conditions 查詢條件，eg: [ {"key":"Cust_Account.account","value":"myaccount1"},{"key":"Custs.email","value":"sinopac@sinopac.com"}...},
+ * @param {Object} conditions 查詢條件，eg: [ {"key":"Cust_Account.account","value":"myaccount1"},{"key":"Custs.email","value":"sinopac@sinopac.com"}...},
 * @see /modules/system_base/Cust_AccountModule
  */
 module.exports.getCust_Account_and_Custs= (conditions) => {

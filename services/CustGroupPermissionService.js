@@ -73,6 +73,7 @@ module.exports.insertCustGroupPermissions = async (req, res, next) => {
 	{
 		const messageHandler = require("../helper/MessageHandler");
 		const custGroupPermissionRepository = require("../repositories/CustGroupPermissionRepository");
+		const utility = require("../helper/Utility");
 
 		// check parameters
 		if(!req.body.hasOwnProperty("data")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
@@ -87,36 +88,40 @@ module.exports.insertCustGroupPermissions = async (req, res, next) => {
 		if(!req.body.data.hasOwnProperty("cust_group_permission_auth") || 
 			req.body.data.cust_group_permission_auth.length === 0 || 
 			req.body.data.cust_group_permission_auth[0] === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
-
-		// check existed
-		const isExisted = await custGroupPermissionRepository.isCustGroupPermissionsExisted({
-			"Group_Id": req.body.data.cust_group_permission_group,
-			"System_Id": req.body.data.cust_group_permission_sys,
-			"Directory_Id": req.body.data.cust_group_permission_dir,
-			"Function_Id": req.body.data.cust_group_permission_fun,
-			"Auth": req.body.data.cust_group_permission_auth,
-		});
-		if(isExisted === true) throw(new Error("ERROR_DUPLICATE_DATA"));
-
-		// perpare permission 
-		let permissionList = [];
-		for(let i=0; i< req.body.data.cust_group_permission_auth.length; i++){
-			permissionList.push({
+		let isInputDataVaild = await utility.checkInputData(req.body.data);
+		if(isInputDataVaild){
+			// check existed
+			const isExisted = await custGroupPermissionRepository.isCustGroupPermissionsExisted({
 				"Group_Id": req.body.data.cust_group_permission_group,
 				"System_Id": req.body.data.cust_group_permission_sys,
 				"Directory_Id": req.body.data.cust_group_permission_dir,
 				"Function_Id": req.body.data.cust_group_permission_fun,
-				"Auth": req.body.data.cust_group_permission_auth[i],
+				"Auth": req.body.data.cust_group_permission_auth,
 			});
-		}
+			if(isExisted === true) throw(new Error("ERROR_DUPLICATE_DATA"));
 
-		// insert data
-		await custGroupPermissionRepository.createCustGroupPermissions(permissionList);
-		
-		res.send({ 	
-			"code": messageHandler.infoHandler("INFO_CREATE_DATA_SUCCESS"), 
-			"data": [], 
-		});
+			// perpare permission 
+			let permissionList = [];
+			for(let i=0; i< req.body.data.cust_group_permission_auth.length; i++){
+				permissionList.push({
+					"Group_Id": req.body.data.cust_group_permission_group,
+					"System_Id": req.body.data.cust_group_permission_sys,
+					"Directory_Id": req.body.data.cust_group_permission_dir,
+					"Function_Id": req.body.data.cust_group_permission_fun,
+					"Auth": req.body.data.cust_group_permission_auth[i],
+				});
+			}
+
+			// insert data
+			await custGroupPermissionRepository.createCustGroupPermissions(permissionList);
+			
+			res.send({ 	
+				"code": messageHandler.infoHandler("INFO_CREATE_DATA_SUCCESS"), 
+				"data": [], 
+			});
+		}else{
+			throw(new Error("ERROR_BAD_REQUEST"));
+		}
 	}
 	catch(err){ next(err); }
 };
@@ -134,6 +139,7 @@ module.exports.deleteCustGroupPermission = async (req, res, next) => {
 	{
 		const messageHandler = require("../helper/MessageHandler");
 		const custGroupPermissionRepository = require("../repositories/CustGroupPermissionRepository");
+		const utility = require("../helper/Utility");
 
 		// check parameters
 		if(!req.body.hasOwnProperty("data")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
@@ -146,27 +152,31 @@ module.exports.deleteCustGroupPermission = async (req, res, next) => {
 		if(!req.body.data.hasOwnProperty("cust_group_permission_fun") || 
 			req.body.data.cust_group_permission_fun === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("cust_group_permission_auth")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
+		let isInputDataVaild = await utility.checkInputData(req.body.data);
+		if(isInputDataVaild){
+			//check existed
+			let conditions = {
+				"Group_Id": req.body.data.cust_group_permission_group,
+				"System_Id": req.body.data.cust_group_permission_sys,
+				"Directory_Id": req.body.data.cust_group_permission_dir,
+				"Function_Id": req.body.data.cust_group_permission_fun,
+			};
+			if(req.body.data.hasOwnProperty("cust_group_permission_auth") && req.body.data.cust_group_permission_auth !== "") 
+				conditions.Auth = req.body.data.cust_group_permission_auth;
 
-		//check existed
-		let conditions = {
-			"Group_Id": req.body.data.cust_group_permission_group,
-			"System_Id": req.body.data.cust_group_permission_sys,
-			"Directory_Id": req.body.data.cust_group_permission_dir,
-			"Function_Id": req.body.data.cust_group_permission_fun,
-		};
-		if(req.body.data.hasOwnProperty("cust_group_permission_auth") && req.body.data.cust_group_permission_auth !== "") 
-			conditions.Auth = req.body.data.cust_group_permission_auth;
+			const isExisted = await custGroupPermissionRepository.isCustGroupPermissionsExisted(conditions);
+			if(isExisted === false) throw(new Error("ERROR_NOT_EXISTED_DATA"));
 
-		const isExisted = await custGroupPermissionRepository.isCustGroupPermissionsExisted(conditions);
-		if(isExisted === false) throw(new Error("ERROR_NOT_EXISTED_DATA"));
-
-		// delete data
-		await custGroupPermissionRepository.destroyCustGroupPermissions(conditions);
-		
-		res.send({ 	
-			"code": messageHandler.infoHandler("INFO_DELETE_DATA_SUCCESS"), 
-			"data": [], 
-		});
+			// delete data
+			await custGroupPermissionRepository.destroyCustGroupPermissions(conditions);
+			
+			res.send({ 	
+				"code": messageHandler.infoHandler("INFO_DELETE_DATA_SUCCESS"), 
+				"data": [], 
+			});
+		}else{
+			throw(new Error("ERROR_BAD_REQUEST"));
+		}
 	}
 	catch(err){ next(err); }
 };

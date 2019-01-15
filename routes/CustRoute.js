@@ -26,6 +26,10 @@ module.exports = (app) => {
 	app.route("/api/cust/custodian/not_charge_off_history").post(custodianCustWebService.getCustodianNotChargeOffHistory);
 	app.route("/api/cust/custodian/statement_report").post(custodianCustWebService.getStatementReport);
 
+	const custodianBankWebService = require("../services/CustodianBankWebService")
+	app.route("/api/bank/custodian/safekeeping/holding").post(custodianBankWebService.getSafekeepingHolding);
+	app.route("/api/bank/custodian/safekeeping/balance").post(custodianBankWebService.getSafekeepingBalance);
+
 	const JwtKeyService = require("../services/JwtKeyService");
 	app.route("/api/cust/jwt_key_create").post(JwtKeyService.updateJwtKey);
 	

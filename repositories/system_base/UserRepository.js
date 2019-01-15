@@ -99,7 +99,8 @@ module.exports.getUsersProfile = (conditions) => {
 };
 
 /**
- * @param  {String} hashedId
+ * 取的使用者工號
+ * @param  {String} hashedId hash後的使用者工號
  */
 module.exports.getEmployeeId = (hashedId) => {
 	try {
@@ -216,7 +217,7 @@ module.exports.createUser = (userModuleDate) => {
  */
 module.exports.validateLocalPassword = (reqEmployeeId, reqPwd) => {
 	try {
-		const CryptoJS = require("crypto-js");
+		const Bcrypt = require("bcryptjs");
 		const ormDB = require("../../helper/OrmDB");
 		const userModule = require("../../modules/system_base/UserModule");
 
@@ -235,16 +236,12 @@ module.exports.validateLocalPassword = (reqEmployeeId, reqPwd) => {
 					});
 				})
 				.then((r) => {
-
 					if (r.length > 0) {
-						let md5Pwd = CryptoJS.MD5(reqPwd);
-						let soltPwd = md5Pwd + r[0]["u_pwdsalt"].toString().trim();
-						let cryptoPwd = CryptoJS.SHA1(soltPwd).toString().trim();
 						let dbPwd = r[0]["u_pwd"].toString().trim();
-						resolve(((cryptoPwd === dbPwd) ? true : false));
+						Bcrypt.compare(reqPwd, dbPwd).then(function (res) {
+							resolve(res); 
+						});
 					}
-
-					resolve(resolve(false)); // can not validate
 				})
 				.catch((err) => { reject(err); });
 		});

@@ -56,22 +56,27 @@ module.exports.insertGroup = async (req, res, next) => {
 	{
 		const messageHandler = require("../../helper/MessageHandler");
 		const groupRepository = require("../../repositories/system_base/GroupRepository");
+		const utility = require("../../helper/Utility");
 
 		// check parameters
 		if(!req.body.hasOwnProperty("data")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
-
-		// insert data
-		await groupRepository.createGroup({
-			"Name":         req.body.data.g_name,
-			"Description":  req.body.data.g_description,
-			"Role":         req.body.data.g_role,
-			"Product":		req.body.data.g_product,
-		});
-		
-		res.send({ 	
-			"code": messageHandler.infoHandler("INFO_CREATE_DATA_SUCCESS"), 
-			"data": [], 
-		});
+		let isInputDataVaild = await utility.checkInputData(req.body.data);
+		if(isInputDataVaild){
+			// insert data
+			await groupRepository.createGroup({
+				"Name":         req.body.data.g_name,
+				"Description":  req.body.data.g_description,
+				"Role":         req.body.data.g_role,
+				"Product":		req.body.data.g_product,
+			});
+			
+			res.send({ 	
+				"code": messageHandler.infoHandler("INFO_CREATE_DATA_SUCCESS"), 
+				"data": [], 
+			});
+		}else{
+			throw(new Error("ERROR_BAD_REQUEST"));
+		}
 	}
 	catch(err){
 		next(err);
@@ -91,22 +96,27 @@ module.exports.deleteGroup = async (req, res, next) => {
 	{
 		const messageHandler = require("../../helper/MessageHandler");
 		const groupRepository = require("../../repositories/system_base/GroupRepository");
+		const utility = require("../../helper/Utility");
 
 		// check parameters
 		if(!req.body.hasOwnProperty("data")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("g_id")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
+		let isInputDataVaild = await utility.checkInputData(req.body.data);
+		if(isInputDataVaild){
+			// check group existed
+			const isExisted = await groupRepository.isGroupsExisted({"Id" : req.body.data.g_id});
+			if(isExisted === false) throw(new Error("ERROR_NOT_EXISTED_DATA"));
 
-		// check group existed
-		const isExisted = await groupRepository.isGroupsExisted({"Id" : req.body.data.g_id});
-		if(isExisted === false) throw(new Error("ERROR_NOT_EXISTED_DATA"));
-
-		// delete data
-		await groupRepository.destroyGroup({"Id" : req.body.data.g_id});
-		
-		res.send({ 	
-			"code": messageHandler.infoHandler("INFO_DELETE_DATA_SUCCESS"), 
-			"data": [], 
-		});
+			// delete data
+			await groupRepository.destroyGroup({"Id" : req.body.data.g_id});
+			
+			res.send({ 	
+				"code": messageHandler.infoHandler("INFO_DELETE_DATA_SUCCESS"), 
+				"data": [], 
+			});
+		}else{
+			throw(new Error("ERROR_BAD_REQUEST"));
+		}
 	}
 	catch(err){ next(err); }
 };
@@ -124,29 +134,34 @@ module.exports.updateGroup = async (req, res, next) => {
 	{
 		const messageHandler = require("../../helper/MessageHandler");
 		const groupRepository = require("../../repositories/system_base/GroupRepository");
+		const utility = require("../../helper/Utility");
 
 		// check parameters
 		if(!req.body.hasOwnProperty("data")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("g_id")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
+		let isInputDataVaild = await utility.checkInputData(req.body.data);
+		if(isInputDataVaild){
+			// check group existed
+			const isExisted = await groupRepository.isGroupsExisted({"Id" : req.body.data.g_id});
+			if(isExisted === false) throw(new Error("ERROR_NOT_EXISTED_DATA"));
 
-		// check group existed
-		const isExisted = await groupRepository.isGroupsExisted({"Id" : req.body.data.g_id});
-		if(isExisted === false) throw(new Error("ERROR_NOT_EXISTED_DATA"));
+			// update group
+			await groupRepository.setGroup(
+				{
+					"Name": 		req.body.data.g_name,
+					"Description": 	req.body.data.g_description,
+					"Role": 		req.body.data.g_role,
+					"Product":		req.body.data.g_product,
+				},
+				{ "Id": decodeURIComponent(req.body.data.g_id) });
 
-		// update group
-		await groupRepository.setGroup(
-			{
-				"Name": 		req.body.data.g_name,
-				"Description": 	req.body.data.g_description,
-				"Role": 		req.body.data.g_role,
-				"Product":		req.body.data.g_product,
-			},
-			{ "Id": decodeURIComponent(req.body.data.g_id) });
-
-		res.send({ 	
-			"code": messageHandler.infoHandler("INFO_UPDATE_DATA_SUCCESS"), 
-			"data": [], 
-		});
+			res.send({ 	
+				"code": messageHandler.infoHandler("INFO_UPDATE_DATA_SUCCESS"), 
+				"data": [], 
+			});
+		}else{
+			throw(new Error("ERROR_BAD_REQUEST"));
+		}
 	}
 	catch(err){ next(err); }
 };

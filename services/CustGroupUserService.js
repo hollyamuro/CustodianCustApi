@@ -17,21 +17,26 @@ module.exports.selectCustsInGroup = async (req, res, next) => {
 	{
 		const messageHandler = require("../helper/MessageHandler");
 		const custGroupUserRepository = require("../repositories/CustGroupUserRepository");
+		const utility = require("../helper/Utility");
 
 		// check parameters
 		if(!req.body.hasOwnProperty("data")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("cust_group_id")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
-
-		// setup conditions
-		let conditions = { "Group_Id": req.body.data.cust_group_id, };
-		
-		// get data
-		const data = await custGroupUserRepository.getCustGroupUsers(conditions);		
-		
-		res.send({	
-			"code": (data.length === 0) ? messageHandler.infoHandler("INFO_NO_DATA") : messageHandler.infoHandler("INFO_READ_DATA_SUCCESS"),
-			"data": data, 
-		});
+		let isInputDataVaild = await utility.checkInputData(req.body.data);
+		if(isInputDataVaild){
+			// setup conditions
+			let conditions = { "Group_Id": req.body.data.cust_group_id, };
+			
+			// get data
+			const data = await custGroupUserRepository.getCustGroupUsers(conditions);		
+			
+			res.send({	
+				"code": (data.length === 0) ? messageHandler.infoHandler("INFO_NO_DATA") : messageHandler.infoHandler("INFO_READ_DATA_SUCCESS"),
+				"data": data, 
+			});
+		}else{
+			throw(new Error("ERROR_BAD_REQUEST"));
+		}
 	}
 	catch(err){
 		next(err);
@@ -50,32 +55,37 @@ module.exports.insertCustGroupUser = async (req, res, next) => {
 	{
 		const messageHandler = require("../helper/MessageHandler");
 		const custGroupUserRepository = require("../repositories/CustGroupUserRepository");
+		const utility = require("../helper/Utility");
 
 		// check parameters
 		if(!req.body.hasOwnProperty("data")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("cust_group_id") || req.body.data.cust_group_id === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("cust_account_no") || req.body.data.cust_account_no === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("cust_sino_account")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
-
-		//check existed
-		const isExisted = await custGroupUserRepository.isCustGroupUsersExisted({
-			"Account_No": 	req.body.data.cust_account_no,
-			"Sino_Account": req.body.data.cust_sino_account,
-			"Group_Id":  	req.body.data.cust_group_id,
-		});
-		if(isExisted === true) throw(new Error("ERROR_DUPLICATE_DATA"));
-		
-		// insert data
-		await custGroupUserRepository.createCustGroupUser({
-			"Account_No": 	req.body.data.cust_account_no,
-			"Sino_Account": req.body.data.cust_sino_account,
-			"Group_Id":  	req.body.data.cust_group_id,
-		});
-		
-		res.send({ 	
-			"code": messageHandler.infoHandler("INFO_CREATE_DATA_SUCCESS"), 
-			"data": [], 
-		});
+		let isInputDataVaild = await utility.checkInputData(req.body.data);
+		if(isInputDataVaild){
+			//check existed
+			const isExisted = await custGroupUserRepository.isCustGroupUsersExisted({
+				"Account_No": 	req.body.data.cust_account_no,
+				"Sino_Account": req.body.data.cust_sino_account,
+				"Group_Id":  	req.body.data.cust_group_id,
+			});
+			if(isExisted === true) throw(new Error("ERROR_DUPLICATE_DATA"));
+			
+			// insert data
+			await custGroupUserRepository.createCustGroupUser({
+				"Account_No": 	req.body.data.cust_account_no,
+				"Sino_Account": req.body.data.cust_sino_account,
+				"Group_Id":  	req.body.data.cust_group_id,
+			});
+			
+			res.send({ 	
+				"code": messageHandler.infoHandler("INFO_CREATE_DATA_SUCCESS"), 
+				"data": [], 
+			});
+		}else{
+			throw(new Error("ERROR_BAD_REQUEST"));
+		}
 	}
 	catch(err){
 		next(err);
@@ -95,32 +105,37 @@ module.exports.deleteCustGroupUser = async (req, res, next) => {
 	{
 		const messageHandler = require("../helper/MessageHandler");
 		const custGroupUserRepository = require("../repositories/CustGroupUserRepository");
+		const utility = require("../helper/Utility");
 
 		// check parameters
 		if(!req.body.hasOwnProperty("data")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("cust_group_id") || req.body.data.cust_group_id === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("cust_account_no") || req.body.data.cust_account_no === "") throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("cust_sino_account")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
+		let isInputDataVaild = await utility.checkInputData(req.body.data);
+		if(isInputDataVaild){
+			//check existed
+			const isExisted = await custGroupUserRepository.isCustGroupUsersExisted({
+				"Account_No": 	req.body.data.cust_account_no,
+				"Sino_Account": req.body.data.cust_sino_account,
+				"Group_Id":  	req.body.data.cust_group_id,
+			});
+			if(isExisted === false) throw(new Error("ERROR_NOT_EXISTED_DATA"));
 
-		//check existed
-		const isExisted = await custGroupUserRepository.isCustGroupUsersExisted({
-			"Account_No": 	req.body.data.cust_account_no,
-			"Sino_Account": req.body.data.cust_sino_account,
-			"Group_Id":  	req.body.data.cust_group_id,
-		});
-		if(isExisted === false) throw(new Error("ERROR_NOT_EXISTED_DATA"));
-
-		// delete data
-		await custGroupUserRepository.destroyCustGroupUser({
-			"Account_No": 	req.body.data.cust_account_no,
-			"Sino_Account": req.body.data.cust_sino_account,
-			"Group_Id":  	req.body.data.cust_group_id,
-		});
-		
-		res.send({ 	
-			"code": messageHandler.infoHandler("INFO_DELETE_DATA_SUCCESS"), 
-			"data": [], 
-		});
+			// delete data
+			await custGroupUserRepository.destroyCustGroupUser({
+				"Account_No": 	req.body.data.cust_account_no,
+				"Sino_Account": req.body.data.cust_sino_account,
+				"Group_Id":  	req.body.data.cust_group_id,
+			});
+			
+			res.send({ 	
+				"code": messageHandler.infoHandler("INFO_DELETE_DATA_SUCCESS"), 
+				"data": [], 
+			});
+		}else{
+			throw(new Error("ERROR_BAD_REQUEST"));
+		}
 	}
 	catch(err){ next(err); }
 };

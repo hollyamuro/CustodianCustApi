@@ -28,3 +28,25 @@ module.exports.testService = (req, res, next) => {
 		next(err);
 	}
 };
+
+/**
+ * 取的系統版本
+ * @param  {} req
+ * @param  {} res
+ * @param  {} next
+ */
+module.exports.version = (req, res, next) => {
+
+	const config = require("../../Config");
+
+	try{
+		const messageHandler = require("../../helper/MessageHandler");
+		res.send({
+			"code" : messageHandler.infoHandler("INFO_READ_DATA_SUCCESS"),
+			"data": config[process.env.NODE_ENV].version,
+		});
+	}	
+	catch(err){
+		next(err);
+	}
+};

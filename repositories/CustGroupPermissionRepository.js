@@ -36,7 +36,7 @@ module.exports.isCustGroupPermissionsExisted = (conditions) => {
 /**
  * 取得指定條件的客戶群組權限。
  * @param  {Object} condition 查詢條件，eg: { "Group_Id": groupId }。
- * @return {Array.{Object}} 取得之客戶群組權限。
+ * @return {Array.<Object>} 取得之客戶群組權限。
  */
 module.exports.getCustGroupPermissions = (attributes, conditions) => {
 	try

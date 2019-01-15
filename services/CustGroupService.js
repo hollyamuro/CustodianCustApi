@@ -56,22 +56,27 @@ module.exports.insertCustGroup = async (req, res, next) => {
 	{
 		const messageHandler = require("../helper/MessageHandler");
 		const custGroupRepository = require("../repositories/CustGroupRepository");
+		const utility = require("../helper/Utility");
 
 		// check parameters
 		if(!req.body.hasOwnProperty("data")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
-
-		// insert data
-		await custGroupRepository.createCustGroup({
-			"Name":         req.body.data.cg_name,
-			"Description":  req.body.data.cg_description,
-			"Role":         req.body.data.cg_role,
-			"Product":		req.body.data.cg_product,
-		});
-		
-		res.send({ 	
-			"code": messageHandler.infoHandler("INFO_CREATE_DATA_SUCCESS"), 
-			"data": [], 
-		});
+		let isInputDataVaild = await utility.checkInputData(req.body.data);
+		if(isInputDataVaild){
+			// insert data
+			await custGroupRepository.createCustGroup({
+				"Name":         req.body.data.cg_name,
+				"Description":  req.body.data.cg_description,
+				"Role":         req.body.data.cg_role,
+				"Product":		req.body.data.cg_product,
+			});
+			
+			res.send({ 	
+				"code": messageHandler.infoHandler("INFO_CREATE_DATA_SUCCESS"), 
+				"data": [], 
+			});
+		}else{
+			throw(new Error("ERROR_BAD_REQUEST"));
+		}
 	}
 	catch(err){
 		next(err);
@@ -91,22 +96,27 @@ module.exports.deleteCustGroup = async (req, res, next) => {
 	{
 		const messageHandler = require("../helper/MessageHandler");
 		const custGroupRepository = require("../repositories/CustGroupRepository");
+		const utility = require("../helper/Utility");
 
 		// check parameters
 		if(!req.body.hasOwnProperty("data")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("cg_id")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
+		let isInputDataVaild = await utility.checkInputData(req.body.data);
+		if(isInputDataVaild){
+			// check group existed
+			const isExisted = await custGroupRepository.isCustGroupsExisted({"Id" : req.body.data.cg_id});
+			if(isExisted === false) throw(new Error("ERROR_NOT_EXISTED_DATA"));
 
-		// check group existed
-		const isExisted = await custGroupRepository.isCustGroupsExisted({"Id" : req.body.data.cg_id});
-		if(isExisted === false) throw(new Error("ERROR_NOT_EXISTED_DATA"));
-
-		// delete data
-		await custGroupRepository.destroyCustGroup({"Id" : req.body.data.cg_id});
-		
-		res.send({ 	
-			"code": messageHandler.infoHandler("INFO_DELETE_DATA_SUCCESS"), 
-			"data": [], 
-		});
+			// delete data
+			await custGroupRepository.destroyCustGroup({"Id" : req.body.data.cg_id});
+			
+			res.send({ 	
+				"code": messageHandler.infoHandler("INFO_DELETE_DATA_SUCCESS"), 
+				"data": [], 
+			});
+		}else{
+			throw(new Error("ERROR_BAD_REQUEST"));
+		}
 	}
 	catch(err){ next(err); }
 };
@@ -124,29 +134,34 @@ module.exports.updateCustGroup = async (req, res, next) => {
 	{
 		const messageHandler = require("../helper/MessageHandler");
 		const custGroupRepository = require("../repositories/CustGroupRepository");
+		const utility = require("../helper/Utility");
 
 		// check parameters
 		if(!req.body.hasOwnProperty("data")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
 		if(!req.body.data.hasOwnProperty("cg_id")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
+		let isInputDataVaild = await utility.checkInputData(req.body.data);
+		if(isInputDataVaild){
+			// check group existed
+			const isExisted = await custGroupRepository.isCustGroupsExisted({"Id" : req.body.data.cg_id});
+			if(isExisted === false) throw(new Error("ERROR_NOT_EXISTED_DATA"));
 
-		// check group existed
-		const isExisted = await custGroupRepository.isCustGroupsExisted({"Id" : req.body.data.cg_id});
-		if(isExisted === false) throw(new Error("ERROR_NOT_EXISTED_DATA"));
+			// update group
+			await custGroupRepository.setCustGroup(
+				{
+					"Name":         req.body.data.cg_name,
+					"Description":  req.body.data.cg_description,
+					"Role":         req.body.data.cg_role,
+					"Product":		req.body.data.cg_product,
+				},
+				{ "Id": decodeURIComponent(req.body.data.cg_id) });
 
-		// update group
-		await custGroupRepository.setCustGroup(
-			{
-				"Name":         req.body.data.cg_name,
-				"Description":  req.body.data.cg_description,
-				"Role":         req.body.data.cg_role,
-				"Product":		req.body.data.cg_product,
-			},
-			{ "Id": decodeURIComponent(req.body.data.cg_id) });
-
-		res.send({ 	
-			"code": messageHandler.infoHandler("INFO_UPDATE_DATA_SUCCESS"), 
-			"data": [], 
-		});
+			res.send({ 	
+				"code": messageHandler.infoHandler("INFO_UPDATE_DATA_SUCCESS"), 
+				"data": [], 
+			});
+		}else{
+			throw(new Error("ERROR_BAD_REQUEST"));
+		}
 	}
 	catch(err){ next(err); }
 };

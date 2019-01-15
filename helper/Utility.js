@@ -157,3 +157,42 @@ module.exports.decryption=function(inputString)
 	let decryptedText = aesjs.utils.utf8.fromBytes(decryptedBytes);
 	return decryptedText;
 };
+
+/**
+ * 檢查輸入資料
+ * @param  {Object} inputdata
+ */
+module.exports.checkInputData = async(inputdata) => 
+{
+	try
+	{
+		const debug = require("debug")("CustodianApi:Utility.checkInputData");
+		const InputDataRegexp = /['"/*\\]/;
+		return new Promise( (resolve, reject ) => {
+			Object.keys(inputdata).forEach(element => {
+				debug(inputdata[element]);
+				if(typeof(inputdata[element])==="number"){
+                    inputdata[element] = inputdata[element].toString();
+				}
+
+				if(typeof(inputdata[element])==="object"){
+                    for(let i=0; i<inputdata[element].length;i++){
+                        if(inputdata[element][i].search(InputDataRegexp) >= 0){
+							resolve(false);
+                        }
+                    }
+                }
+                else{
+                    if(inputdata[element].search(InputDataRegexp) >= 0){
+                        resolve(false);
+                    }
+				}
+			
+			});
+			resolve(true);
+		});
+	}
+	catch(err){
+		throw(err);
+	}
+};
