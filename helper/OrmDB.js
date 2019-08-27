@@ -9,11 +9,11 @@ const config     = require("../Config");
 const _sequelize = require("sequelize");
 
 module.exports = {
-	"CustodianWeb": new _sequelize( 
-		config[process.env.NODE_ENV].database_config.CustodianWeb.database, 
-		config[process.env.NODE_ENV].database_config.CustodianWeb.username, 
-		config[process.env.NODE_ENV].database_config.CustodianWeb.password, 
-		config[process.env.NODE_ENV].database_config.CustodianWeb.options
+	"KumonCheckINWeb": new _sequelize( 
+		config[process.env.NODE_ENV].database_config.KumonCheckINWeb.database, 
+		config[process.env.NODE_ENV].database_config.KumonCheckINWeb.username, 
+		config[process.env.NODE_ENV].database_config.KumonCheckINWeb.password, 
+		config[process.env.NODE_ENV].database_config.KumonCheckINWeb.options
 	),
 	"BondGolDB": new _sequelize( 
 		config[process.env.NODE_ENV].database_config.BondGol.database, 

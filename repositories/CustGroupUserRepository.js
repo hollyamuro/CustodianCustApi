@@ -17,7 +17,7 @@ module.exports.isCustGroupUsersExisted = (conditions) => {
 		const custGroupUserModule = require("../modules/CustGroupUserModule");
 		
 		return new Promise( (resolve, reject ) => {
-			ormDB.CustodianWeb.authenticate()
+			ormDB.KumonCheckINWeb.authenticate()
 				.then(() => {    
 					return custGroupUserModule.findAll({
 						where: conditions,
@@ -55,7 +55,7 @@ module.exports.getCustGroupUsers = (conditions) => {
 		// custModule.belongsTo(custGroupUserModule, { foreignKey: "account_no",  targetKey: "Account_No", });
 	
 		return new Promise( (resolve, reject ) => {
-			ormDB.CustodianWeb.authenticate()
+			ormDB.KumonCheckINWeb.authenticate()
 				.then(() => {    
 					return custGroupUserModule.findAll({
 						where: conditions,
@@ -107,9 +107,9 @@ module.exports.createCustGroupUser = (custGroupUserModuleData) => {
 		const custGroupUserModule = require("../modules/CustGroupUserModule");
 
 		return new Promise( (resolve, reject ) => {
-			ormDB.CustodianWeb.authenticate()
+			ormDB.KumonCheckINWeb.authenticate()
 				.then(() => {  
-					return ormDB.CustodianWeb.transaction(function (t){
+					return ormDB.KumonCheckINWeb.transaction(function (t){
 						return custGroupUserModule.create(custGroupUserModuleData, {transaction: t, })
 							.then(() => { resolve(); })
 							.catch((err) => { throw(err); }); 
@@ -134,9 +134,9 @@ module.exports.destroyCustGroupUser = (conditions) => {
 		const custGroupUserModule = require("../modules/CustGroupUserModule");
 
 		return new Promise( (resolve, reject ) => {
-			ormDB.CustodianWeb.authenticate()
+			ormDB.KumonCheckINWeb.authenticate()
 				.then(() => {  
-					return ormDB.CustodianWeb.transaction(function (t) {
+					return ormDB.KumonCheckINWeb.transaction(function (t) {
 						return custGroupUserModule.destroy({ where: conditions, transaction: t, })
 							.then(() => { resolve(); })
 							.catch((err) => { throw(err); }); 

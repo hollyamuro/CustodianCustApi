@@ -12,35 +12,11 @@
 module.exports.errorHandler = (error) => {
 
 	const messageCodes = require("./MessageCodes");
-	const debug = require("debug")("CustodianApi:MessageHandler.errorHandler");
+	const debug = require("debug")("KumonCheckINApi:MessageHandler.errorHandler");
 	
 	try
 	{
 		switch(error.name){ 
-		/* sequelize database error */
-		// case "SequelizeValidationError": {
-					
-		// 	let errMsg = "";
-		// 	for(let i=0; i<error.errors.length;i++){
-		// 		errMsg = errMsg + error.errors[i].message + ";" ;
-		// 	}
-			
-		// 	return {
-		// 		"type": 	messageCodes.ERROR.ERROR_WRONG_DATA_FORMAT.type,
-		// 		"title": 	messageCodes.ERROR.ERROR_WRONG_DATA_FORMAT.type,
-		// 		"message": 	messageCodes.ERROR.ERROR_WRONG_DATA_FORMAT.message + "(" + errMsg + ")",
-		// 	};
-		// }
-		// case "SequelizeDatabaseError": {
-		// 	return {
-		// 		"type": 	messageCodes.ERROR.ERROR_DATABASE_REQUEST_FAIL.type,
-		// 		"title": 	messageCodes.ERROR.ERROR_DATABASE_REQUEST_FAIL.type,
-		// 		"message": 	messageCodes.ERROR.ERROR_DATABASE_REQUEST_FAIL.message,
-		// 	};
-		// }
-
-		/* new error handle rule add here */
-		
 		default:{
 			/* customize code (name use default error)*/
 			if(messageCodes.ERROR[error.message]){
@@ -73,7 +49,7 @@ module.exports.errorHandler = (error) => {
 module.exports.infoHandler = (msgCode) => {
 	
 	const messageCodes = require("./MessageCodes");
-	const debug = require("debug")("CustodianApi:MessageHandler.infoHandler");
+	const debug = require("debug")("KumonCheckINApi:MessageHandler.infoHandler");
 
 	try
 	{

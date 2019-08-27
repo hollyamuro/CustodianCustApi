@@ -13,7 +13,7 @@
  */
 module.exports = async (req, res, next) => {
 
-	// const debug = require("debug")("CustodianApi:CheckInput");
+	// const debug = require("debug")("KumonCheckINApi:CheckInput");
 	try{
         const InputData = req.body.data;
 		const InputDataRegexp = /['"/*\\]/;

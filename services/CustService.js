@@ -54,9 +54,9 @@ module.exports.importAllCusts = async (req, res, next) => {
 		if(!req.body.hasOwnProperty("data")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
         
 		// get data from api
-		const local =   config[process.env.NODE_ENV].CustodianBackend.policy + "://" + 
-                        config[process.env.NODE_ENV].CustodianBackend.host + ":" + 
-                        config[process.env.NODE_ENV].CustodianBackend.port;
+		const local =   config[process.env.NODE_ENV].KumonCheckINBackend.policy + "://" + 
+                        config[process.env.NODE_ENV].KumonCheckINBackend.host + ":" + 
+                        config[process.env.NODE_ENV].KumonCheckINBackend.port;
 		const custs = await axios.post(local + "/apis/custmoer/getlist",{});
         
 		// delete old data

@@ -13,7 +13,7 @@
  */
 module.exports = async (req, res, next) => {
 
-    const debug = require("debug")("CustodianApi:JwtCheck");
+    const debug = require("debug")("KumonCheckINApi:JwtCheck");
     const config = require("../Config");
     const axios = require("axios");
     const requestUrl = req.url.split("?")[0];
@@ -30,7 +30,7 @@ module.exports = async (req, res, next) => {
             if(!req.body.hasOwnProperty("token")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
             if(!req.body.hasOwnProperty("system")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
             
-            if(req.body.system === "CustodianCustWeb"){
+            if(req.body.system === "KumonCheckINCustWeb"){
                 const jwt_user_profile = await axios.post(local + "/api/cust/jwtverify", {
                     "data":req.body.data, 
                     "requester":req.body.requester,
@@ -41,7 +41,7 @@ module.exports = async (req, res, next) => {
 
                 if(jwt_user_profile.data.code.type === "ERROR") throw(new Error("ERROR_UNAUTHORIZED"));
                 next();
-            }else if(req.body.system === "CustodianWeb"){
+            }else if(req.body.system === "KumonCheckINWeb"){
                 const jwt_user_profile = await axios.post(local + "/api/staff/users/verify", {
                     "data":req.body.data, 
                     "requester":req.body.requester,

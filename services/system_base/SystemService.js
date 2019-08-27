@@ -14,7 +14,7 @@
   */
 module.exports.testService = (req, res, next) => {
 
-	const debug = require("debug")("CustodianApi:SystemService.testService");
+	const debug = require("debug")("KumonCheckINApi:SystemService.testService");
 
 	try{
 		const messageHandler = require("../../helper/MessageHandler");

@@ -39,9 +39,9 @@ module.exports.getCustPwdReset = (conditions) => {
 		}
 		sql=sql+where;
 		return new Promise((resolve, reject)=> {
-			return ormDB.CustodianWeb.authenticate()
+			return ormDB.KumonCheckINWeb.authenticate()
 				.then(() => {   
-					return ormDB.CustodianWeb.query(sql, 
+					return ormDB.KumonCheckINWeb.query(sql, 
 						{ 
 							replacements: [], 
 							type: ormDB.sequelize.QueryTypes.SELECT ,
@@ -82,9 +82,9 @@ module.exports.createCustPwdReset = (CustPwdResetModule) => {
 		const ormDB = require("../helper/OrmDB");
 		const CustPwdReset_Module = require("../modules/CustPwdResetModule");
 		return new Promise( (resolve, reject ) => {
-			ormDB.CustodianWeb.authenticate()
+			ormDB.KumonCheckINWeb.authenticate()
 				.then(() => {  
-					return ormDB.CustodianWeb.transaction((t) => {
+					return ormDB.KumonCheckINWeb.transaction((t) => {
 						return CustPwdReset_Module.create(CustPwdResetModule, { transaction: t, })
 							.then(() => { resolve(); })
 							.catch((err) => { throw(err); }); 

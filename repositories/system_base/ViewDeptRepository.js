@@ -18,7 +18,7 @@ module.exports.getDepts = (conditions) => {
 		const viewDeptModule = require("../../modules/system_base/ViewDeptModule");
 		
 		return new Promise( (resolve, reject ) => {
-			ormDB.CustodianWeb.authenticate()
+			ormDB.KumonCheckINWeb.authenticate()
 				.then(() => {    
 					return viewDeptModule.findAll({
 						attributes: [

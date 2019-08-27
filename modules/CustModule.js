@@ -11,7 +11,7 @@
 const buildCustModule = () => {
 
 	const ormDB = require("../helper/OrmDB");
-	return ormDB.CustodianWeb.define("Custs", {
+	return ormDB.KumonCheckINWeb.define("Custs", {
 		account_no: {
 			type: ormDB.sequelize.STRING,
 			primaryKey: true

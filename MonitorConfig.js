@@ -16,8 +16,8 @@ module.exports = {
 				"128.110.38.*"
 			],
 			mail: [	
-				"tac.chen@sinopac.com", 
-				"jcarter.chang@sinopac.com", 
+				"hollyamuro@gmail.com", 
+				"elane1108@gmail.com", 
 			],
 		}
 		/* another list below */
@@ -31,8 +31,8 @@ module.exports = {
 				"128.110.38.*"
 			],
 			mail: [	
-				"tac.chen@sinopac.com", 
-				"jcarter.chang@sinopac.com", 
+				"hollyamuro@gmail.com", 
+				"elane1108@gmail.com", 
 			],
 		}
 		/* another list below */
@@ -46,8 +46,8 @@ module.exports = {
 				"128.110.38.*"
 			],
 			mail: [	
-				"tac.chen@sinopac.com", 
-				"jcarter.chang@sinopac.com", 
+				"hollyamuro@gmail.com", 
+				"elane1108@gmail.com", 
 			],
 		}
 		/* another list below */

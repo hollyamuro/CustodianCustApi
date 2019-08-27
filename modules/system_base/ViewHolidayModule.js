@@ -11,7 +11,7 @@
 const buildViewHolidayModule = () => {
 
 	const ormDB = require("../../helper/OrmDB");
-	return ormDB.CustodianWeb.define("Holidays", {
+	return ormDB.KumonCheckINWeb.define("Holidays", {
 		/* 日期 */
 		Hdate: {
 			type: ormDB.sequelize.STRING,

@@ -1,6 +1,6 @@
 /**
  * 系統共用路由
- * @module routes/StaffRoute
+ * @module routes/ServiceRoute
  */
 
 "use strict";

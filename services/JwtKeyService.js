@@ -19,7 +19,7 @@ module.exports.updateJwtKey = async (req, res, next) => {
 		const messageHandler = require("../helper/MessageHandler");
 		const JWTKeyRepository = require("../repositories/JWTKeyRepository");
 		const crypto = require("crypto");
-		const debug = require("debug")("CustodianApi:JwtKeyService.updateJwtKey");
+		const debug = require("debug")("KumonCheckINApi:JwtKeyService.updateJwtKey");
 
 		let RandomStr1 = crypto.randomBytes(128).toString("base64").substr(0, 128);
 		let RandomStr2 = crypto.randomBytes(128).toString("base64").substr(0, 128);
@@ -28,11 +28,11 @@ module.exports.updateJwtKey = async (req, res, next) => {
 
 		await JWTKeyRepository.updateJwtKey(
 			{ "JwtKey": 	RandomStr1, },
-			{ "SystemType":	"CustodianCustWeb" ,});
+			{ "SystemType":	"KumonCheckINCustWeb" ,});
 
 		await JWTKeyRepository.updateJwtKey(
 			{ "JwtKey": 	RandomStr2, },
-			{ "SystemType":	"CustodianWeb" ,});
+			{ "SystemType":	"KumonCheckINWeb" ,});
 		
 		res.send({	
 			"code": messageHandler.infoHandler("INFO_READ_DATA_SUCCESS"),

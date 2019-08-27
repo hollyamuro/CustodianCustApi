@@ -12,7 +12,7 @@
 module.exports = (() => {
 
 	const ormDB = require("../helper/OrmDB");
-	return ormDB.CustodianWeb.define("Cust_Group_Permissions", {
+	return ormDB.KumonCheckINWeb.define("Cust_Group_Permissions", {
 		/* 群組ID */
 		Group_Id: {
 			type: ormDB.sequelize.INTEGER,

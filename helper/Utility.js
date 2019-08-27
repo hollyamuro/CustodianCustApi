@@ -57,7 +57,7 @@ module.exports.createAccountLog=function(type,user,strtoday,Cust_Account)
 {
 	// const CustAccountRepository = require("../repositories/CustAccountRepository");
 	const utility = require("./Utility");
-	const debug = require("debug")("CustodianApi:Utility.createAccountLog");
+	const debug = require("debug")("KumonCheckINApi:Utility.createAccountLog");
 	// let create_log_result;
 	let Cust_Account_Log = {    
 		"action_type":type,
@@ -123,7 +123,7 @@ module.exports.getSqlDateByString=function(inputDate)
 module.exports.encryption=function(inputString)
 {
 	let aesjs = require("aes-js");
-	let key_256 = [2, 0, 1, 8, 0, 0, 0, 7, 0, 0, 1, 7, 0, 0, 17, 0,
+	let key_256 = [2, 0, 1, 9, 0, 0, 0, 7, 0, 0, 1, 7, 0, 0, 17, 0,
 		0, 48, 0, 0, 2, 0, 1, 8, 0, 0, 0, 8, 0,
 		0, 1, 5];
 
@@ -145,7 +145,7 @@ module.exports.encryption=function(inputString)
 module.exports.decryption=function(inputString)
 {
 	let aesjs = require("aes-js");
-	let key_256 = [2, 0, 1, 8, 0, 0, 0, 7, 0, 0, 1, 7, 0, 0, 17, 0,
+	let key_256 = [2, 0, 1, 9, 0, 0, 0, 7, 0, 0, 1, 7, 0, 0, 17, 0,
 		0, 48, 0, 0, 2, 0, 1, 8, 0, 0, 0, 8, 0,
 		0, 1, 5];
 	let encryptedBytes = aesjs.utils.hex.toBytes(inputString);
@@ -166,7 +166,7 @@ module.exports.checkInputData = async(inputdata) =>
 {
 	try
 	{
-		const debug = require("debug")("CustodianApi:Utility.checkInputData");
+		const debug = require("debug")("KumonCheckINApi:Utility.checkInputData");
 		const InputDataRegexp = /['"/*\\]/;
 		return new Promise( (resolve, reject ) => {
 			Object.keys(inputdata).forEach(element => {

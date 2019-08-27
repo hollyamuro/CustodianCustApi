@@ -17,11 +17,11 @@ module.exports.login =  async (req, res, next) => {
 	const messageHandler = require("../helper/MessageHandler");
 	const CustAccountRepository=require("../repositories/CustAccountRepository");
 	const custRepository = require("../repositories/CustRepository");
-	const debug = require("debug")("CustodianApi:CustAccountService.login");
+	const debug = require("debug")("KumonCheckINApi:CustAccountService.login");
 	const config = require("../Config");
 	const utility=require("../helper/Utility");
 	const dateFormat = require("date-format");
-	const mailjson=require("../helper/CustodianMail");
+	const mailjson=require("../helper/KumonCheckInMail");
 	//prepare data
 	const cust_mailapi = config[process.env.NODE_ENV].Cust_MailServer.policy + "://" + 
 	config[process.env.NODE_ENV].Cust_MailServer.host + ":" + config[process.env.NODE_ENV].Cust_MailServer.port+"/"+config[process.env.NODE_ENV].Cust_MailServer.api;
@@ -174,7 +174,7 @@ module.exports.login =  async (req, res, next) => {
 					"permission_list": 	permissions,
 					"product_list":		products,
 					"role_list":		roles,
-					"system":			"CustodianCustWeb",
+					"system":			"KumonCheckINCustWeb",
 				};
 				jwt_sign_prototype = 
 				{				
@@ -186,7 +186,7 @@ module.exports.login =  async (req, res, next) => {
 				const local = 	config[process.env.NODE_ENV].JwtService_api.policy + "://" + 
 								config[process.env.NODE_ENV].JwtService_api.host + ":" + 
 								config[process.env.NODE_ENV].JwtService_api.port;
-				const token = await axios.post(local + "/api/sign", { "data": jwt_sign_prototype,"system": "CustodianCustWeb"});
+				const token = await axios.post(local + "/api/sign", { "data": jwt_sign_prototype,"system": "KumonCheckINCustWeb"});
 				debug(token.data.data);		
 				return_prototype["access_token"] = token.data.data;
 				res.send({  
@@ -212,7 +212,7 @@ module.exports.login =  async (req, res, next) => {
  */
 module.exports.jwtverify =  async (req, res, next) => {
 	try{
-		const debug = require("debug")("CustodianApi:CustAccountService.jwtverify");
+		const debug = require("debug")("KumonCheckINApi:CustAccountService.jwtverify");
 		const messageHandler = require("../helper/MessageHandler");
 		const axios = require("axios");
 		const config = require("../Config");
@@ -239,7 +239,7 @@ module.exports.jwtverify =  async (req, res, next) => {
 		};
 
 		const local = config[process.env.NODE_ENV].JwtService_api.policy + "://" + config[process.env.NODE_ENV].JwtService_api.host + ":" + config[process.env.NODE_ENV].JwtService_api.port;
-		const jwt_user_data = await axios.post(local + "/api/verify", { "token": req.body.token, "system": "CustodianCustWeb",}); 
+		const jwt_user_data = await axios.post(local + "/api/verify", { "token": req.body.token, "system": "KumonCheckINCustWeb",}); 
 		debug(jwt_user_data.data);
 		if(jwt_user_data.data.login){
 			let conditions_cust = [{"key":"accounthash","value":jwt_user_data.data.user}];
@@ -262,14 +262,14 @@ module.exports.jwtverify =  async (req, res, next) => {
 					"permission_list": 	permissions,
 					"product_list":		roles,
 					"role_list":		products,
-					"system":			"CustodianCustWeb",
+					"system":			"KumonCheckINCustWeb",
 				};
 
 				jwt_sign_prototype = {
 					"user":  			cust_account[0].accounthash, 
 				};
 
-				const token = await axios.post(local + "/api/sign", { "data": jwt_sign_prototype, "system": "CustodianCustWeb",});
+				const token = await axios.post(local + "/api/sign", { "data": jwt_sign_prototype, "system": "KumonCheckINCustWeb",});
 				if(token.data.code.type === "ERROR") {
 					throw(new Error("ERROR_TOKEN"));
 				}else{
@@ -307,10 +307,10 @@ module.exports.inviteCust = async (req, res, next) =>
 		const CustRepository = require("../repositories/CustRepository");
 		const CustAccountRepository = require("../repositories/CustAccountRepository");
 		const uuidV1 = require("uuid/v1");
-		const debug = require("debug")("CustodianApi:CustAccountService.inviteCust");
+		const debug = require("debug")("KumonCheckINApi:CustAccountService.inviteCust");
 		const config = require("../Config");
 		const axios = require("axios");
-		const mailjson=require("../helper/CustodianMail");
+		const mailjson=require("../helper/KumonCheckInMail");
 		let dateFormat = require("date-format");
 		const utility=require("../helper/Utility");
 		const crypto = require("crypto");
@@ -327,8 +327,8 @@ module.exports.inviteCust = async (req, res, next) =>
 		const cust_mailapi = config[process.env.NODE_ENV].Cust_MailServer.policy + "://" + 
 						config[process.env.NODE_ENV].Cust_MailServer.host + ":" + config[process.env.NODE_ENV].Cust_MailServer.port+"/"+config[process.env.NODE_ENV].Cust_MailServer.api;
 		let salt = uuidV1(); 
-		let custurl = config[process.env.NODE_ENV].CustodianCustWeb.policy + "://" + 
-						config[process.env.NODE_ENV].CustodianCustWeb.domain+ "/verify="+salt;
+		let custurl = config[process.env.NODE_ENV].KumonCheckINCustWeb.policy + "://" + 
+						config[process.env.NODE_ENV].KumonCheckINCustWeb.domain+ "/verify="+salt;
 		let strtoday=dateFormat.asString("yyyy/MM/dd hh:mm:ss", new Date());
 		// let strexpire_date=utility.setDate(new Date(),"yyyy/MM/dd hh:mm:ss",0,1,0,0);
 		let strexpire_date=dateFormat.asString("yyyy/MM/dd hh:mm:ss", new Date((new Date().setDate(new Date().getDate()+1))));
@@ -526,7 +526,7 @@ module.exports.inviteCust = async (req, res, next) =>
 module.exports.url_check= async (req, res, next) =>{
 	const messageHandler = require("../helper/MessageHandler");
 	const CustAccountRepository = require("../repositories/CustAccountRepository");
-	const debug = require("debug")("CustodianApi:CustAccountService.url_check");
+	const debug = require("debug")("KumonCheckINApi:CustAccountService.url_check");
 	const utility=require("../helper/Utility");
 	try
 	{
@@ -601,11 +601,11 @@ module.exports.resetPassword = async (req, res, next) =>{
 	const CustAccountRepository = require("../repositories/CustAccountRepository");
 	const CustPwdResetRepository = require("../repositories/CustPwdResetRepository");
 	const config=require("../config");
-	//const debug = require("debug")("CustodianApi:CustAccountService.resetPassword");
+	//const debug = require("debug")("KumonCheckINApi:CustAccountService.resetPassword");
 	const axios = require("axios");
 	let dateFormat = require("date-format");
 	const utility=require("../helper/Utility");
-	const mailjson=require("../helper/CustodianMail");
+	const mailjson=require("../helper/KumonCheckInMail");
 	const uuidV1 = require("uuid/v1");
 	try{
 		//prepare data
@@ -614,8 +614,8 @@ module.exports.resetPassword = async (req, res, next) =>{
 			config[process.env.NODE_ENV].Cust_MailServer.host + ":" + config[process.env.NODE_ENV].Cust_MailServer.port+"/"+config[process.env.NODE_ENV].Cust_MailServer.api;
 		const service_mailapi = config[process.env.NODE_ENV].local_MailServer.policy + "://" + 
 			config[process.env.NODE_ENV].local_MailServer.host + ":" + config[process.env.NODE_ENV].local_MailServer.port+"/"+config[process.env.NODE_ENV].local_MailServer.api;		
-		let reset_url = config[process.env.NODE_ENV].CustodianCustWeb.policy + "://" + 
-		config[process.env.NODE_ENV].CustodianCustWeb.domain+ "/verify_reset="+salt;
+		let reset_url = config[process.env.NODE_ENV].KumonCheckINCustWeb.policy + "://" + 
+		config[process.env.NODE_ENV].KumonCheckINCustWeb.domain+ "/verify_reset="+salt;
 		//let reset_mail_json=mailjson.resetpassmail("temp",reset_url);
 		let reset_mail_service_json;
 		let status_V="V";
@@ -783,12 +783,12 @@ module.exports.matching = async (req, res, next) =>
 {
 	const messageHandler = require("../helper/MessageHandler");
 	const CustAccountRepository = require("../repositories/CustAccountRepository");
-	//const debug = require("debug")("CustodianApi:CustAccountService.matching");
+	//const debug = require("debug")("KumonCheckINApi:CustAccountService.matching");
 	const config = require("../Config");
 	const axios = require("axios");
 	let dateFormat = require("date-format");
 	const utility=require("../helper/Utility");
-	const mailjson=require("../helper/CustodianMail");
+	const mailjson=require("../helper/KumonCheckInMail");
 	try{
 		// check parameters
 		if(!req.body.hasOwnProperty("data")) throw(new Error("ERROR_LACK_OF_PARAMETER"));
@@ -949,13 +949,13 @@ module.exports.verify = async (req, res, next) =>
 {
 	const messageHandler = require("../helper/MessageHandler");
 	const CustAccountRepository = require("../repositories/CustAccountRepository");
-	const debug = require("debug")("CustodianApi:CustAccountService.verify");
+	const debug = require("debug")("KumonCheckINApi:CustAccountService.verify");
 	const config = require("../Config");
 	// const axios = require("axios");
 	let dateFormat = require("date-format");
 	const utility=require("../helper/Utility");
 	const uuidV1 = require("uuid/v1");
-	const mailjson=require("../helper/CustodianMail");
+	const mailjson=require("../helper/KumonCheckInMail");
 	const axios = require("axios");
 	try{
 		//prepare data
@@ -1182,11 +1182,11 @@ module.exports.resetpassword = async (req, res, next) =>
 {
 	const messageHandler = require("../helper/MessageHandler");
 	const CustAccountRepository = require("../repositories/CustAccountRepository");
-	const debug = require("debug")("CustodianApi:CustAccountService.resetpassword");
+	const debug = require("debug")("KumonCheckINApi:CustAccountService.resetpassword");
 	const config = require("../Config");
 	let dateFormat = require("date-format");
 	const utility=require("../helper/Utility");
-	const mailjson=require("../helper/CustodianMail");
+	const mailjson=require("../helper/KumonCheckInMail");
 	const axios = require("axios");
 	const crypto = require("crypto");
 	try{
@@ -1307,11 +1307,11 @@ module.exports.verifypassword = async (req, res, next) =>
 	const messageHandler = require("../helper/MessageHandler");
 	const CustAccountRepository = require("../repositories/CustAccountRepository");
 	const CustPwdResetRepository=require("../repositories/CustPwdResetRepository");
-	const debug = require("debug")("CustodianApi:CustAccountService.verifypassword");
+	const debug = require("debug")("KumonCheckINApi:CustAccountService.verifypassword");
 	let dateFormat = require("date-format");
 	const utility=require("../helper/Utility");
 	const config=require("../config");
-	const mailjson=require("../helper/CustodianMail");
+	const mailjson=require("../helper/KumonCheckInMail");
 	const axios = require("axios");
 	try
 	{

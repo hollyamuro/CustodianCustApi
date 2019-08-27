@@ -11,7 +11,7 @@
  */
 const runCI = (args) => {
 
-	const debug = require("debug")("CustodianApi:CICommand.runCI");
+	const debug = require("debug")("KumonCheckINApi:CICommand.runCI");
 	const ciMethod = require("./CommonMethod");
 
 	if (args[0]) {

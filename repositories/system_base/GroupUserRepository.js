@@ -17,7 +17,7 @@ module.exports.isGroupUsersExisted = (conditions) => {
 		const groupUserModule = require("../../modules/system_base/GroupUserModule");
 		
 		return new Promise( (resolve, reject ) => {
-			ormDB.CustodianWeb.authenticate()
+			ormDB.KumonCheckINWeb.authenticate()
 				.then(() => {    
 					return groupUserModule.findAll({
 						where: conditions,
@@ -59,7 +59,7 @@ module.exports.getGroupUsers = ( conditions) => {
 		viewDeptModule.belongsTo(viewEmployeeModule, { foreignKey: "Dept_No",  targetKey: "Dept_No", });
 			
 		return new Promise( (resolve, reject ) => {
-			ormDB.CustodianWeb.authenticate()
+			ormDB.KumonCheckINWeb.authenticate()
 				.then(() => {    
 					return groupUserModule.findAll({
 						where: conditions,
@@ -114,9 +114,9 @@ module.exports.createGroupUser = (groupUserModuleData) => {
 		const groupUserModule = require("../../modules/system_base/GroupUserModule");
 		
 		return new Promise( (resolve, reject ) => {
-			ormDB.CustodianWeb.authenticate()
+			ormDB.KumonCheckINWeb.authenticate()
 				.then(() => {  
-					return ormDB.CustodianWeb.transaction(function (t){
+					return ormDB.KumonCheckINWeb.transaction(function (t){
 						return groupUserModule.create(groupUserModuleData, {transaction: t, })
 							.then(() => { resolve(); })
 							.catch((err) => { throw(err); }); 
@@ -141,9 +141,9 @@ module.exports.destroyGroupUser = (conditions) => {
 		const groupUserModule = require("../../modules/system_base/GroupUserModule");
 		
 		return new Promise( (resolve, reject ) => {
-			ormDB.CustodianWeb.authenticate()
+			ormDB.KumonCheckINWeb.authenticate()
 				.then(() => {  
-					return ormDB.CustodianWeb.transaction(function (t) {
+					return ormDB.KumonCheckINWeb.transaction(function (t) {
 						return groupUserModule.destroy({ where: conditions, transaction: t, })
 							.then(() => { resolve(); })
 							.catch((err) => { throw(err); }); 

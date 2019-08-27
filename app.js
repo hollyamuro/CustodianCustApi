@@ -59,17 +59,18 @@ const packageHandler = () => {
 	/* setting api routers */
 	require("./routes/ServiceRoute")(app);
 	require("./routes/CustRoute")(app);
+	require("./routes/StudentRoute")(app);
 	require("./routes/StaffRoute")(app);
 
 	// catch 404 and forward to error handler
 	app.use((req, res, next) => {
-		const error = require("./helper/CustodianWebError");
+		const error = require("./helper/KumonCheckInError");
 		next(new error.NotFoundError());
 	});
 
 	// error handler
 	app.use((err, req, res, next) => {
-		const debug = require("debug")("CustodianApi:app");
+		const debug = require("debug")("KumonCheckInApi:app");
 		const messageHandler = require("./helper/MessageHandler");
 		debug((process.env.NODE_ENV !== "production") ? err.stack : "");
 

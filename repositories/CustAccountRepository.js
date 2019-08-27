@@ -17,7 +17,7 @@ module.exports.isCustAccountsExisted = (conditions) => {
 		const ormDB = require("../helper/OrmDB");
 		const Cust_AccountModule = require("../modules/CustAccountModule");
 		return new Promise( (resolve, reject ) => {
-			ormDB.CustodianWeb.authenticate()
+			ormDB.KumonCheckINWeb.authenticate()
 				.then(() => {    
 					return Cust_AccountModule.findAll({
 						where: conditions,
@@ -59,7 +59,7 @@ module.exports.getCust_Account = (conditions) => {
 		const ormDB = require("../helper/OrmDB");
 		const CustAccountModule = require("../modules/CustAccountModule");
 		return new Promise( (resolve, reject ) => {
-			ormDB.CustodianWeb.authenticate()
+			ormDB.KumonCheckINWeb.authenticate()
 				.then(() => {    
 					return CustAccountModule.findAll({
 						attributes: 
@@ -134,9 +134,9 @@ module.exports.createCust_Account = (CustAccountModule) => {
 		const Cust_AccountModule = require("../modules/CustAccountModule");
 	
 		return new Promise( (resolve, reject ) => {
-			ormDB.CustodianWeb.authenticate()
+			ormDB.KumonCheckINWeb.authenticate()
 				.then(() => {  
-					return ormDB.CustodianWeb.transaction((t) => {
+					return ormDB.KumonCheckINWeb.transaction((t) => {
 						return Cust_AccountModule.create(CustAccountModule, { transaction: t, })
 							.then(() => { resolve(); })
 							.catch((err) => { throw(err); }); 
@@ -163,9 +163,9 @@ module.exports.set_Cust_Account = (Cust_Account,conditions) => {
 		const Cust_AccountModule = require("../modules/CustAccountModule");
 		
 		return new Promise( (resolve, reject ) => {
-			ormDB.CustodianWeb.authenticate()
+			ormDB.KumonCheckINWeb.authenticate()
 				.then(() => {    
-					return ormDB.CustodianWeb.transaction((t) =>{
+					return ormDB.KumonCheckINWeb.transaction((t) =>{
 						return Cust_AccountModule.update( Cust_Account, { where: conditions, transaction: t, })
 							.then(() => { resolve(); })
 							.catch((err) => { throw(err); }); 
@@ -191,9 +191,9 @@ module.exports.createCust_Account_Log = (CustAccountModule) => {
 		const Cust_Account_LogModule = require("../modules/CustAccountLogModule");
 	
 		return new Promise( (resolve, reject ) => {
-			ormDB.CustodianWeb.authenticate()
+			ormDB.KumonCheckINWeb.authenticate()
 				.then(() => {  
-					return ormDB.CustodianWeb.transaction((t) => {
+					return ormDB.KumonCheckINWeb.transaction((t) => {
 						return Cust_Account_LogModule.create(CustAccountModule, { transaction: t, })
 							.then(() => { resolve(); })
 							.catch((err) => { throw(err); }); 
@@ -217,7 +217,7 @@ module.exports.getCust_Account_and_Custs= (conditions) => {
 	{
 		const utility=require("../helper/Utility");
 		const ormDB = require("../helper/OrmDB");
-		//const debug = require("debug")("CustodianApi:getCust_Account_and_Custs:select by sql");
+		//const debug = require("debug")("KumonCheckINApi:getCust_Account_and_Custs:select by sql");
 		let where="";
 		let i=0;
 		let count=0;
@@ -260,9 +260,9 @@ module.exports.getCust_Account_and_Custs= (conditions) => {
 		}
 		sql=sql+where;
 		return new Promise((resolve, reject)=> {
-			return ormDB.CustodianWeb.authenticate()
+			return ormDB.KumonCheckINWeb.authenticate()
 				.then(() => {   
-					return ormDB.CustodianWeb.query(sql, 
+					return ormDB.KumonCheckINWeb.query(sql, 
 						{ 
 							replacements: [], 
 							type: ormDB.sequelize.QueryTypes.SELECT ,

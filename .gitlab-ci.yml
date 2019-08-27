@@ -27,10 +27,10 @@ stages:
 backup_job_dev:
  stage: backup_dev
  script:
-  - cd D:/CustodianApi
+  - cd D:/KumonCheckINApi
   - echo backup stage at %time% and directory %cd% 
-  - xcopy "D:\CustodianApi\log" "D:\CustodianApi_LOG\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%%time:~0,2%%time:~3,2%_Log\log" /I/Y
-  - cd "D:\CustodianApi_LOG\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%%time:~0,2%%time:~3,2%_Log\log"
+  - xcopy "D:\KumonCheckINApi\log" "D:\KumonCheckINApi_LOG\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%%time:~0,2%%time:~3,2%_Log\log" /I/Y
+  - cd "D:\KumonCheckINApi_LOG\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%%time:~0,2%%time:~3,2%_Log\log"
   - if exist  "err.log" rename err.log  "%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%%time:~0,2%%time:~3,2%_err.log"
   - if exist  "out.log" rename out.log  "%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%%time:~0,2%%time:~3,2%_out.log"
   - echo current timetest %time%
@@ -45,11 +45,11 @@ prepare_job_dev:
  stage: prepare_dev
  script:
   - cd D:/
-  - rd D:\CustodianApi_BK /s /q
-  - xcopy "D:\CustodianApi" "D:\CustodianApi_BK\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%_BK\" /I/E/Y/EXCLUDE:D:\CustodianApi\exclusion.txt
-  - cd "D:\CustodianApi_BK\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%_BK\"
+  - rd D:\KumonCheckINApi_BK /s /q
+  - xcopy "D:\KumonCheckINApi" "D:\KumonCheckINApi_BK\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%_BK\" /I/E/Y/EXCLUDE:D:\KumonCheckINApi\exclusion.txt
+  - cd "D:\KumonCheckINApi_BK\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%_BK\"
   - del package-lock.json
-  - cd D:/CustodianApi
+  - cd D:/KumonCheckINApi
   - echo prepare stage at %time% and directory %cd%
   - git reset --hard HEAD~
   - git pull
@@ -66,7 +66,7 @@ clean_job_dev:
   - echo clean stage at %time% and directory %cd%
   - if exist node_modules rd /s /q node_modules
   - del package-lock.json
-  - cd D:/CustodianApi/log
+  - cd D:/KumonCheckINApi/log
   - echo %cd%
   - del *.log
  variables:
@@ -79,7 +79,7 @@ clean_job_dev:
 build_job_dev:
  stage: build_dev
  script:
-  - cd D:/CustodianApi
+  - cd D:/KumonCheckINApi
   - echo build stage at %time% and directory %cd%
   - npm install
  variables:
@@ -92,9 +92,9 @@ build_job_dev:
 forever_job_dev:
  stage: forever_dev
  script:
-  - cd D:/CustodianApi
+  - cd D:/KumonCheckINApi
   - echo forever stage at %time% and directory %cd%
-  - npm run win_ci_function_dev forever CustodianApi
+  - npm run win_ci_function_dev forever KumonCheckINApi
  variables:
   GIT_STRATEGY: none
  tags:
@@ -105,11 +105,11 @@ forever_job_dev:
 deploy_job_dev:
  stage: deploy_dev
  script:
-  - cd D:/CustodianApi/config
+  - cd D:/KumonCheckINApi/config
   - FOR /F "delims=':' tokens=2" %%a in ('ipconfig ^| find "IPv4"') do set _IPAddress=%%a
   - echo %_IPAddress%
-  - if exist %_IPAddress%.js copy %_IPAddress%.js D:\CustodianApi\Config.js
-  - cd D:/CustodianApi
+  - if exist %_IPAddress%.js copy %_IPAddress%.js D:\KumonCheckINApi\Config.js
+  - cd D:/KumonCheckINApi
   - echo deploy stage at %time% and directory %cd%
   - npm run win_forever_dev
  variables:
@@ -122,7 +122,7 @@ deploy_job_dev:
 failure_job_dev:
  stage: failure_dev
  script:
-  - cd D:/CustodianApi
+  - cd D:/KumonCheckINApi
   - echo failure stage at %time% and directory %cd%
  variables:
   GIT_STRATEGY: none
@@ -133,7 +133,7 @@ failure_job_dev:
 success_job_dev:
  stage: success_dev
  script:
-  - cd D:/CustodianApi
+  - cd D:/KumonCheckINApi
   - echo success stage at %time% and directory %cd%
  variables:
   GIT_STRATEGY: none
@@ -147,10 +147,10 @@ success_job_dev:
 backup_job_prod:
  stage: backup_prod
  script:
-  - cd D:/CustodianApi
+  - cd D:/KumonCheckINApi
   - echo backup stage at %time% and directory %cd%
-  - xcopy "D:\CustodianApi\log" "D:\CustodianApi_LOG\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%%time:~0,2%%time:~3,2%_Log\log" /I
-  - cd "D:\CustodianApi_LOG\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%%time:~0,2%%time:~3,2%_Log\log"
+  - xcopy "D:\KumonCheckINApi\log" "D:\KumonCheckINApi_LOG\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%%time:~0,2%%time:~3,2%_Log\log" /I
+  - cd "D:\KumonCheckINApi_LOG\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%%time:~0,2%%time:~3,2%_Log\log"
   - if exist  "err.log" rename err.log  "%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%%time:~0,2%%time:~3,2%_err.log"
   - if exist  "out.log" rename out.log  "%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%%time:~0,2%%time:~3,2%_out.log"
   - echo current timetest %time%
@@ -165,11 +165,11 @@ prepare_job_prod:
  stage: prepare_prod
  script:
   - cd D:/
-  - rd D:\CustodianApi_BK /s /q
-  - xcopy "D:\CustodianApi" "D:\CustodianApi_BK\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%_BK\" /I/E/Y/EXCLUDE:D:\CustodianApi\exclusion.txt
-  - cd "D:\CustodianApi_BK\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%_BK\"
+  - rd D:\KumonCheckINApi_BK /s /q
+  - xcopy "D:\KumonCheckINApi" "D:\KumonCheckINApi_BK\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%_BK\" /I/E/Y/EXCLUDE:D:\KumonCheckINApi\exclusion.txt
+  - cd "D:\KumonCheckINApi_BK\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%_BK\"
   - del package-lock.json
-  - cd D:/CustodianApi
+  - cd D:/KumonCheckINApi
   - echo prepare stage at %time% and directory %cd%
   - git reset --hard HEAD~
   - git pull
@@ -186,7 +186,7 @@ clean_job_prod:
   - echo clean stage at %time% and directory %cd%
   - if exist node_modules rd /s /q node_modules
   - del package-lock.json
-  - cd D:/CustodianApi/log
+  - cd D:/KumonCheckINApi/log
   - echo %cd%
   - del *.log
  variables:
@@ -199,7 +199,7 @@ clean_job_prod:
 build_job_prod:
  stage: build_prod
  script:
-  - cd D:/CustodianApi
+  - cd D:/KumonCheckINApi
   - echo build stage at %time% and directory %cd%
   - npm install
  variables:
@@ -212,9 +212,9 @@ build_job_prod:
 forever_job_prod:
  stage: forever_prod
  script:
-  - cd D:/CustodianApi
+  - cd D:/KumonCheckINApi
   - echo forever stage at %time% and directory %cd%
-  - npm run win_ci_function_prod forever CustodianApi
+  - npm run win_ci_function_prod forever KumonCheckINApi
  variables:
   GIT_STRATEGY: none
  tags:
@@ -225,11 +225,11 @@ forever_job_prod:
 deploy_job_prod:
  stage: deploy_prod
  script:
-  - cd D:/CustodianApi/config
+  - cd D:/KumonCheckINApi/config
   - FOR /F "delims=':' tokens=2" %%a in ('ipconfig ^| find "IPv4"') do set _IPAddress=%%a
   - echo %_IPAddress%
-  - if exist %_IPAddress%.js copy %_IPAddress%.js D:\CustodianApi\Config.js
-  - cd D:/CustodianApi
+  - if exist %_IPAddress%.js copy %_IPAddress%.js D:\KumonCheckINApi\Config.js
+  - cd D:/KumonCheckINApi
   - echo deploy stage at %time% and directory %cd%
   - npm run win_forever_prod
  variables:
@@ -243,7 +243,7 @@ deploy_job_prod:
 failure_job_prod:
  stage: failure_prod
  script:
-  - cd D:/CustodianApi
+  - cd D:/KumonCheckINApi
   - echo failure stage at %time% and directory %cd%
  variables:
   GIT_STRATEGY: none
@@ -256,7 +256,7 @@ failure_job_prod:
 success_job_prod:
  stage: success_prod
  script:
-  - cd D:/CustodianApi
+  - cd D:/KumonCheckINApi
   - echo success stage at %time% and directory %cd%
  variables:
   GIT_STRATEGY: none
@@ -271,10 +271,10 @@ success_job_prod:
 backup_job_backup:
  stage: backup_backup
  script:
-  - cd D:/CustodianApi
+  - cd D:/KumonCheckINApi
   - echo backup stage at %time% and directory %cd% 
-  - xcopy "D:\CustodianApi\log" "D:\CustodianApi_LOG\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%%time:~0,2%%time:~3,2%_Log\log" /I/Y
-  - cd "D:\CustodianApi_LOG\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%%time:~0,2%%time:~3,2%_Log\log"
+  - xcopy "D:\KumonCheckINApi\log" "D:\KumonCheckINApi_LOG\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%%time:~0,2%%time:~3,2%_Log\log" /I/Y
+  - cd "D:\KumonCheckINApi_LOG\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%%time:~0,2%%time:~3,2%_Log\log"
   - if exist  "err.log" rename err.log  "%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%%time:~0,2%%time:~3,2%_err.log"
   - if exist  "out.log" rename out.log  "%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%%time:~0,2%%time:~3,2%_out.log"
   - echo current timetest %time%
@@ -289,11 +289,11 @@ prepare_job_backup:
  stage: prepare_backup
  script:
   - cd D:/
-  - rd D:\CustodianApi_BK /s /q
-  - xcopy "D:\CustodianApi" "D:\CustodianApi_BK\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%_BK\" /I/E/Y/EXCLUDE:D:\CustodianApi\exclusion.txt
-  - cd "D:\CustodianApi_BK\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%_BK\"
+  - rd D:\KumonCheckINApi_BK /s /q
+  - xcopy "D:\KumonCheckINApi" "D:\KumonCheckINApi_BK\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%_BK\" /I/E/Y/EXCLUDE:D:\KumonCheckINApi\exclusion.txt
+  - cd "D:\KumonCheckINApi_BK\%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%_BK\"
   - del package-lock.json
-  - cd D:/CustodianApi
+  - cd D:/KumonCheckINApi
   - echo prepare stage at %time% and directory %cd%
   - git reset --hard HEAD~
   - git pull
@@ -310,7 +310,7 @@ clean_job_backup:
   - echo clean stage at %time% and directory %cd%
   - if exist node_modules rd /s /q node_modules
   - del package-lock.json
-  - cd D:/CustodianApi/log
+  - cd D:/KumonCheckINApi/log
   - echo %cd%
   - del *.log
  variables:
@@ -323,7 +323,7 @@ clean_job_backup:
 build_job_backup:
  stage: build_backup
  script:
-  - cd D:/CustodianApi
+  - cd D:/KumonCheckINApi
   - echo build stage at %time% and directory %cd%
   - npm install
  variables:
@@ -336,9 +336,9 @@ build_job_backup:
 forever_job_backup:
  stage: forever_backup
  script:
-  - cd D:/CustodianApi
+  - cd D:/KumonCheckINApi
   - echo forever stage at %time% and directory %cd%
-  - npm run win_ci_function_prod forever CustodianApi
+  - npm run win_ci_function_prod forever KumonCheckINApi
  variables:
   GIT_STRATEGY: none
  tags:
@@ -349,11 +349,11 @@ forever_job_backup:
 deploy_job_backup:
  stage: deploy_backup
  script:
-  - cd D:/CustodianApi/config
+  - cd D:/KumonCheckINApi/config
   - FOR /F "delims=':' tokens=2" %%a in ('ipconfig ^| find "IPv4"') do set _IPAddress=%%a
   - echo %_IPAddress%
-  - if exist %_IPAddress%.js copy %_IPAddress%.js D:\CustodianApi\Config.js
-  - cd D:/CustodianApi
+  - if exist %_IPAddress%.js copy %_IPAddress%.js D:\KumonCheckINApi\Config.js
+  - cd D:/KumonCheckINApi
   - echo deploy stage at %time% and directory %cd%
   - npm run win_forever_prod
  variables:
@@ -366,7 +366,7 @@ deploy_job_backup:
 failure_job_backup:
  stage: failure_backup
  script:
-  - cd D:/CustodianApi
+  - cd D:/KumonCheckINApi
   - echo failure stage at %time% and directory %cd%
  variables:
   GIT_STRATEGY: none
@@ -379,7 +379,7 @@ failure_job_backup:
 success_job_backup:
  stage: success_backup
  script:
-  - cd D:/CustodianApi
+  - cd D:/KumonCheckINApi
   - echo success stage at %time% and directory %cd%
  variables:
   GIT_STRATEGY: none

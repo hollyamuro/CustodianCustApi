@@ -11,7 +11,7 @@
 const buildGroupPermissionModule = () => {
 
 	const ormDB = require("../../helper/OrmDB");
-	return ormDB.CustodianWeb.define("Group_Permissions", {
+	return ormDB.KumonCheckINWeb.define("Group_Permissions", {
 		/* 群組ID */
 		Group_Id: {
 			type: ormDB.sequelize.INTEGER,

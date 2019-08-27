@@ -15,8 +15,8 @@ module.exports = {
 
 		/* Database setting */
 		database_config: {
-			CustodianWeb: {
-				database: "CustodianWeb",
+			KumonCheckINWeb: {
+				database: "KumonCheckINWeb",
 				username: "apowner",
 				password: "ok1234",
 				options: {
@@ -48,13 +48,13 @@ module.exports = {
 			port: "8016",
 			policy: "https",
 		},
-		CustodianBackend: {
+		KumonCheckINBackend: {
 			//固收主機
 			host: "128.110.5.45",
 			port: "80",
 			policy: "http",
 		},
-		CustodianCustWeb: {
+		KumonCheckINCustWeb: {
 			domain:"custody-test.sec",
 			host: "218.32.237.86",
 			port: "8086",
@@ -62,7 +62,7 @@ module.exports = {
 		},
 		Cust_MailServer: {
 			//對外mail server
-			from:"SinoPac Securities Custody Service <custodian_service@sinopac.com>",
+			from:"SinoPac Securities Custody Service <KumonCheckIN_service@sinopac.com>",
 			host: "128.110.5.43",
 			port: "8018",
 			policy: "https",
@@ -70,7 +70,7 @@ module.exports = {
 		},
 		local_MailServer: {
 		    //對內mail server
-			from:"SinoPac Securities Custody Service <custodian_service@sinopac.com>",
+			from:"SinoPac Securities Custody Service <KumonCheckIN_service@sinopac.com>",
 			host: "128.110.5.43",
 			port: "8018",
 			policy: "https",

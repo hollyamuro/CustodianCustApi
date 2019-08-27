@@ -11,7 +11,7 @@
 const buildViewEmployeeModule = () => {
 
 	const ormDB = require("../../helper/OrmDB");
-	return ormDB.CustodianWeb.define("Employees", {
+	return ormDB.KumonCheckINWeb.define("Employees", {
 		/* 員工編號 */
 		User_Id: {
 			type: ormDB.sequelize.STRING,

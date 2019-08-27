@@ -17,7 +17,7 @@ module.exports.isGroupPermissionsExisted = (conditions) => {
 		const groupPermissionModule = require("../../modules/system_base/GroupPermissionModule");
 		
 		return new Promise( (resolve, reject ) => {
-			ormDB.CustodianWeb.authenticate()
+			ormDB.KumonCheckINWeb.authenticate()
 				.then(() => {    
 					return groupPermissionModule.findAll({
 						where: conditions,
@@ -44,7 +44,7 @@ module.exports.getGroupPermissions = (attributes, conditions) => {
 		const groupPermissionModule = require("../../modules/system_base/GroupPermissionModule");
 		
 		return new Promise( (resolve, reject ) => {
-			ormDB.CustodianWeb.authenticate()
+			ormDB.KumonCheckINWeb.authenticate()
 				.then(() => {    
 					return groupPermissionModule.findAll({
 						attributes: attributes,
@@ -71,9 +71,9 @@ module.exports.createGroupPermissions = (groupPermissionModuleDataList) => {
 		const groupPermissionModule = require("../../modules/system_base/GroupPermissionModule");
         
 		return new Promise( (resolve, reject ) => {
-			ormDB.CustodianWeb.authenticate()
+			ormDB.KumonCheckINWeb.authenticate()
 				.then(() => {  
-					return ormDB.CustodianWeb.transaction(function (t){
+					return ormDB.KumonCheckINWeb.transaction(function (t){
 						let promises = [];
 						for(let i=0; i<groupPermissionModuleDataList.length; i++){
 							promises.push(groupPermissionModule.create( groupPermissionModuleDataList[i], { transaction: t, }));
@@ -104,9 +104,9 @@ module.exports.destroyGroupPermissions = (conditions) => {
 		const groupPermissionModule = require("../../modules/system_base/GroupPermissionModule");
 		
 		return new Promise( (resolve, reject ) => {
-			ormDB.CustodianWeb.authenticate()
+			ormDB.KumonCheckINWeb.authenticate()
 				.then(() => {  
-					return ormDB.CustodianWeb.transaction(function (t) {
+					return ormDB.KumonCheckINWeb.transaction(function (t) {
 						return groupPermissionModule.destroy({ where: conditions, transaction: t, })
 							.then(() => { resolve(); })
 							.catch((err) => { throw(err); }); 

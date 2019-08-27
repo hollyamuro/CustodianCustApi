@@ -11,7 +11,7 @@
  */
 module.exports.killForeverPid = function(keyword) {
 	
-	const debug = require("debug")("CustodianApi:CommonMethod.killForeverPid");
+	const debug = require("debug")("KumonCheckINApi:CommonMethod.killForeverPid");
 	const forever = require("forever");
 
 	forever.list("", function(err, results) {
@@ -34,22 +34,22 @@ module.exports.killForeverPid = function(keyword) {
 module.exports.foreverCheck = function() {
 
 	const forever = require("forever");
-	const debug = require("debug")("CustodianApi:CommonMethod.foreverCheck");
+	const debug = require("debug")("KumonCheckINApi:CommonMethod.foreverCheck");
 	const config = require("../Config");
 	const monitorConfig = require("../MonitorConfig");
 	const axios = require("axios");
 
 	forever.list("", function(err, results) {
-		let server_path =   config[process.env.NODE_ENV].IntegratedProxyService_api.policy + "://" + 
-                            config[process.env.NODE_ENV].IntegratedProxyService_api.host + ":" + 
-                            config[process.env.NODE_ENV].IntegratedProxyService_api.port;
+		let server_path =   config[process.env.NODE_ENV].KumonCheckInWeb.policy + "://" + 
+                            config[process.env.NODE_ENV].KumonCheckInWeb.host + ":" + 
+                            config[process.env.NODE_ENV].KumonCheckInWeb.port;
 
 		let mail_api_path = "/api/mail_controller/send";
 		if (results === "{}" || results === "undefined" || results === null) {
-			let restart_content = "CustodianApi is statred.";
+			let restart_content = "KumonCheckINApi is statred.";
 			axios.post(server_path + mail_api_path, {
 				receivers: monitorConfig[process.env.NODE_ENV].developers.mail,
-				subject: "CustodianApi is statred.",
+				subject: "KumonCheckINApi is statred.",
 				content: restart_content,
 			}).then(function(response) {
 					// debug(response);
@@ -62,9 +62,9 @@ module.exports.foreverCheck = function() {
 		else {
 			results.forEach(element => {
 				debug(element.id);
-				if(element.id === "CustodianApi"){
+				if(element.id === "KumonCheckINApi"){
 					debug(element.restarts);
-					let restart_content = "Forever restart CustodianApi script for " + element.restarts + " time. ";
+					let restart_content = "Forever restart KumonCheckINApi script for " + element.restarts + " time. ";
 					if (element.restarts >= 0) {
 						axios.post(server_path + mail_api_path, {
 							receivers: monitorConfig[process.env.NODE_ENV].developers.mail,
@@ -72,7 +72,7 @@ module.exports.foreverCheck = function() {
 							content: restart_content,
 						}).then(function(response) {
 							// debug(response);
-							debug("Forever restart CustodianApi script for " + element.restarts + " time");
+							debug("Forever restart KumonCheckINApi script for " + element.restarts + " time");
 						}).catch(function(error) {
 							debug(error);
 						});
